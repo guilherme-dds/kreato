@@ -4,6 +4,8 @@ Aplicação web fullstack e orientada a microserviços para exploração, avalia
 
 O projeto é utilizado na disciplina de Introdução à Computação em Nuvem, com orquestração de contêineres e deploy gerenciado via **Portainer**.
 
+> 📖 **Documentação Técnica & Reversa**: Para a especificação completa do sistema (visão do usuário/código herdado), diagrama de arquitetura detalhado de todos os serviços (Mermaid) e mapeamento exaustivo das regras de negócio (*"Se X, então Y"*), consulte o arquivo [`documentacao.md`](documentacao.md).
+
 ---
 
 ## 🚀 Funcionalidades
