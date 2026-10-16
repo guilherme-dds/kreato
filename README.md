@@ -101,6 +101,22 @@ Possui **todas as permissões do Usuário Comum (`USER`)**, com os seguintes pri
 
 ---
 
+## ☁️ Classificação dos Serviços em Nuvem (IaaS, PaaS e SaaS)
+
+A tabela abaixo classifica cada componente e serviço utilizado na plataforma **CineHanks** de acordo com os modelos de serviço de Computação em Nuvem:
+
+| Peça / Componente do Sistema | Camada de Serviço | Justificativa |
+| :--- | :---: | :--- |
+| **Máquina Virtual (VM / Cloud Compute)** | **IaaS** *(Infrastructure as a Service)* | Fornece a infraestrutura bruta de hardware virtualizado (CPU, memória, armazenamento e rede) e o sistema operacional base onde a solução e o Docker são executados. |
+| **Contêineres de Aplicação (Docker / Docker Compose)** | **PaaS** *(CaaS - Containers as a Service)* | Oferece a plataforma e o runtime padronizado de execução para os microserviços e proxies (`backend`, `auth-service`, `log-service`, `frontend`, `nginx`, `redis`, `minio`), abstraindo a administração direta do SO da máquina. |
+| **Portainer** | **PaaS** *(Platform as a Service)* | Atua como plataforma gerenciada de orquestração visual e controle de ciclo de vida dos contêineres na nuvem, dispensando a operação manual via terminal na VM. |
+| **Banco de Dados Relacional (MySQL / DBaaS)** | **PaaS** *(Database as a Service)* | Entrega o serviço gerenciado de banco de dados relacional na nuvem, liberando os desenvolvedores da configuração e manutenção da infraestrutura física e do sistema operacional do banco. |
+| **Stripe (Gateway de Pagamentos)** | **SaaS** *(Software as a Service)* | Entrega uma aplicação pronta em nuvem para checkout e cobrança de assinaturas, assumindo toda a conformidade de segurança (PCI-DSS) e processamento financeiro via APIs e Webhooks. |
+| **Provedores de E-mail (Brevo / Mailtrap)** | **SaaS** *(Software as a Service)* | Disponibiliza um software completo em nuvem para disparo e monitoramento de e-mails transacionais (ex.: recuperação de senha), consumido diretamente por API sem necessidade de manter servidores SMTP próprios. |
+| **API do TMDB (The Movie Database)** | **SaaS** *(Software as a Service)* | Fornece um serviço web pronto com metadados, pôsteres e sinopses do catálogo cinematográfico, acessado diretamente via requisições HTTP REST. |
+
+---
+
 ## 📁 Estrutura do Projeto
 
 ```text
