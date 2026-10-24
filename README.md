@@ -1,6 +1,8 @@
-# CineHanks - Catálogo de Filmes & Microserviços
+# Kreato - Central de Gestão & Produção de Conteúdo
 
-Aplicação web fullstack e orientada a microserviços para exploração, avaliação e gerenciamento de filmes do ator Tom Hanks. O sistema integra a API do TMDB (The Movie Database), autenticação distribuída com JWT e Refresh Tokens, armazenamento de imagens de perfil via **MinIO (Object Storage S3)**, mensageria e auditoria em tempo real com **Redis Streams**, e banco de dados relacional MySQL. 
+> **Tudo o que você precisa para planejar, organizar e acompanhar seus conteúdos em um só lugar.** O Kreato centraliza o fluxo de produção para ajudar criadores a economizar tempo, manter a consistência e melhorar seus resultados.
+
+Aplicação web fullstack e orientada a microserviços desenvolvida para criadores de conteúdo e equipes de criação. O sistema conta com autenticação distribuída com JWT e Refresh Tokens, armazenamento de fotos de perfil via **MinIO (Object Storage S3)**, mensageria e auditoria em tempo real com **Redis Streams**, banco de dados relacional MySQL, além de orquestração de contêineres e deploy gerenciado via **Portainer**.
 
 O projeto é utilizado na disciplina de Introdução à Computação em Nuvem, com orquestração de contêineres e deploy gerenciado via **Portainer**.
 
@@ -8,16 +10,41 @@ O projeto é utilizado na disciplina de Introdução à Computação em Nuvem, c
 
 ---
 
+## 🎯 Lean Canvas
+
+| Bloco | Descrição |
+| :--- | :--- |
+| **1. Problema** | 1. Ideias, roteiros e calendários ficam espalhados em diferentes ferramentas.<br>2. Dificuldade para manter uma frequência consistente de publicações.<br>3. Falta de organização e acompanhamento do processo de produção e dos resultados dos conteúdos.<br><br>**Alternativas atuais:** Notion, Trello, planilhas e anotações. |
+| **2. Segmentos de clientes** | Criadores de conteúdo em geral, desde iniciantes até profissionais que publicam em plataformas como TikTok, Instagram, YouTube e outras redes sociais. Inclui influenciadores, produtores de conteúdo digital e pequenas equipes de criação. |
+| **3. Proposta única de valor** | Tudo o que você precisa para planejar, organizar e acompanhar seus conteúdos em um só lugar. O Kreato centraliza o fluxo de produção para ajudar criadores a economizar tempo, manter a consistência e melhorar seus resultados. |
+| **4. Solução** | 1. Central de ideias e roteiros: registre temas, ganchos, legendas e organize suas ideias.<br>2. Gestão da produção: acompanhe cada conteúdo em um pipeline e planeje publicações com um calendário editorial.<br>3. Acompanhamento de resultados: registre métricas e compare o desempenho dos conteúdos para orientar futuras produções. |
+| **5. Canais** | TikTok, Instagram e YouTube para divulgar o produto; parcerias com criadores de conteúdo; comunidades de criadores nas redes sociais; vídeos demonstrativos da plataforma; indicações entre usuários. |
+| **6. Fontes de receita** | Modelo freemium com assinatura mensal.<br>• **Gratuito:** funcionalidades básicas com limites de uso.<br>• **Kreato Creator:** R$ 29–39/mês, com mais projetos e recursos de organização.<br>• **Kreato Studio:** R$ 79–129/mês, com colaboração, permissões e ferramentas para equipes.<br><br>*Valores iniciais a validar com potenciais clientes.* |
+| **7. Estrutura de custos** | Hospedagem do frontend e backend; banco de dados; domínio e serviços de e-mail; taxas do processador de pagamentos; custos de APIs de IA, caso sejam utilizadas; divulgação, suporte, desenvolvimento e manutenção. |
+| **8. Métricas-chave** | Número de usuários cadastrados; usuários ativos semanais; quantidade de conteúdos planejados e publicados; percentual de usuários que concluem o fluxo de produção; conversão de usuários gratuitos para pagos; receita recorrente mensal (MRR); retenção e cancelamento de assinaturas. |
+| **9. Vantagem injusta** | Conhecimento sobre os desafios da produção de conteúdo e foco em centralizar o fluxo de trabalho do criador. Com o tempo, a vantagem poderá ser construída por meio de modelos personalizáveis, histórico de desempenho, recomendações adaptadas à rotina dos usuários e uma comunidade de criadores. |
+
+---
+
+## 🔄 Reaproveitamento: O que cada peça atual vira no SaaS
+
+> *Nada da arquitetura vai para o lixo: cada serviço construído ganha um novo papel no modelo de negócio do **Kreato**.*
+
+| Peça do Projeto Atual | O que vira no SaaS | Aplicação no Kreato |
+| :--- | :--- | :--- |
+| **Microsserviço de login + RBAC** | Papéis do negócio | **Perfis e Permissões**: `ADMIN` (administrador da plataforma), `CREATOR` (criador individual com plano Creator) e `MEMBER`/`STUDIO` (equipe com permissões para roteirista, editor e gestor). |
+| **Logs e auditoria (Redis)** | Eventos de negócio | **Rastreamento do Ciclo de Produção**: auditoria em tempo real via Redis Streams para eventos do fluxo (`"ideia criada"`, `"roteiro aprovado"`, `"conteúdo movido no pipeline"`, `"publicação agendada"`, `"métrica atualizada"`). |
+| **Upload e perfil (MinIO)** | Arquivos do domínio | **Armazenamento de Mídias e Assets**: foto de perfil do criador/equipe, upload de mídias de apoio aos conteúdos (thumbnails, capas de carrossel, roteiros em anexo, imagens de referência e arquivos brutos). |
+| **Plano Premium (Stripe)** | Assinatura | **Monetização Freemium**: plano **Gratuito** (funcionalidades básicas com limites), **Kreato Creator** (R$ 29–39/mês: mais projetos e recursos ilimitados) e **Kreato Studio** (R$ 79–129/mês: colaboração multiusuário e permissões de equipe). |
+| **Swagger, CI/CD, observabilidade** | Continuam valendo, pra quem fez as extras | **Infraestrutura e Governança**: documentação OpenAPI/Swagger das APIs de autenticação, conteúdos e métricas; esteira de CI/CD para build/deploy e monitoramento de serviços. |
+
+---
+
 ## 🚀 Funcionalidades
 
 - **Autenticação & Sessão**: Cadastro de conta, login com geração de tokens JWT e Refresh Tokens persistentes no MySQL, encerramento de sessão e recuperação de senha.
 - **Foto de Perfil com MinIO (S3)**: Upload de foto de perfil pelo usuário com validação client-side e server-side de tipo de arquivo (`JPG`, `PNG`, `WEBP`, `GIF`) e tamanho máximo (até 5MB). O arquivo é armazenado no bucket `avatars` no MinIO e a referência da URL é salva no banco de dados.
-- **Página de Perfil do Usuário**: Painel para visualização da conta, upload/alteração/remoção da foto de perfil, edição de bio curta (até 250 caracteres) e exibição dos filmes favoritos.
-- **Catálogo de Filmes**: Integração com a API do TMDB para exibição completa da filmografia de Tom Hanks (pôster, sinopse, avaliação e ano).
-- **Busca & Paginação**: Filtro em tempo real por título, título original, personagem ou ano, com paginação interativa.
-- **Favoritos Personalizados**: Adição e remoção de filmes da lista de favoritos com sincronização no MySQL.
-- **Sistema de Comentários**: Inclusão e exclusão de comentários em cada filme.
-- **Moderação por Administrador (`ADMIN`)**: Painel exclusivo para administradores realizarem busca, visualização global de todos os comentários do sistema e exclusão irrestrita.
+- **Página de Perfil do Usuário**: Painel para visualização da conta, upload/alteração/remoção da foto de perfil e edição de bio curta (até 250 caracteres).
 - **Auditoria de Eventos com Redis**: Microserviço de logs que consome eventos em tempo real (`XADD` / `XREAD`) via Redis Streams para auditoria de logins, logouts e exceções.
 - **Documentação de API OpenAPI/Swagger**: Interface Swagger interativa para o microserviço de autenticação.
 
@@ -26,18 +53,12 @@ O projeto é utilizado na disciplina de Introdução à Computação em Nuvem, c
 ## 🔒 Permissões por Tipo de Usuário (Roles)
 
 ### Usuário Comum (`USER`)
-- **Navegação & Busca**: Explorar o catálogo, utilizar filtros por título, personagem ou ano e visualizar detalhes.
 - **Foto de Perfil**: Realizar upload, alterar ou remover sua imagem de perfil armazenada no MinIO.
 - **Editar Bio**: Adicionar ou modificar sua bio curta no perfil.
-- **Favoritos**: Gerenciar sua lista pessoal de favoritos.
-- **Comentários**: Publicar comentários e excluir **apenas os seus próprios** comentários.
 - **Sessão**: Criar conta, realizar login, renovar sessão, encerrar sessão e redefinir senha.
 
 ### Administrador (`ADMIN`)
 Possui **todas as permissões do Usuário Comum (`USER`)**, com os seguintes privilégios adicionais:
-- **Painel de Moderação**: Acesso ao menu exclusivo **Moderação (ADMIN)** na barra de navegação.
-- **Visualização Global de Comentários**: Acesso à lista de todos os comentários publicados na plataforma, com identificação do autor.
-- **Exclusão Irrestrita de Comentários**: Capacidade de moderar e apagar qualquer comentário do banco de dados.
 - **Auditoria de Logs**: Consulta aos registros de eventos do sistema via microserviço de logs.
 
 ---
@@ -105,7 +126,7 @@ Possui **todas as permissões do Usuário Comum (`USER`)**, com os seguintes pri
 
 ## ☁️ Classificação dos Serviços em Nuvem (IaaS, PaaS e SaaS)
 
-A tabela abaixo classifica cada componente e serviço utilizado na plataforma **CineHanks** de acordo com os modelos de serviço de Computação em Nuvem:
+A tabela abaixo classifica cada componente e serviço utilizado na plataforma **Kreato** de acordo com os modelos de serviço de Computação em Nuvem:
 
 | Peça / Componente do Sistema | Camada de Serviço | Justificativa |
 | :--- | :---: | :--- |
@@ -115,14 +136,13 @@ A tabela abaixo classifica cada componente e serviço utilizado na plataforma **
 | **Banco de Dados Relacional (MySQL / DBaaS)** | **PaaS** *(Database as a Service)* | Entrega o serviço gerenciado de banco de dados relacional na nuvem, liberando os desenvolvedores da configuração e manutenção da infraestrutura física e do sistema operacional do banco. |
 | **Stripe (Gateway de Pagamentos)** | **SaaS** *(Software as a Service)* | Entrega uma aplicação pronta em nuvem para checkout e cobrança de assinaturas, assumindo toda a conformidade de segurança (PCI-DSS) e processamento financeiro via APIs e Webhooks. |
 | **Provedores de E-mail (Brevo / Mailtrap)** | **SaaS** *(Software as a Service)* | Disponibiliza um software completo em nuvem para disparo e monitoramento de e-mails transacionais (ex.: recuperação de senha), consumido diretamente por API sem necessidade de manter servidores SMTP próprios. |
-| **API do TMDB (The Movie Database)** | **SaaS** *(Software as a Service)* | Fornece um serviço web pronto com metadados, pôsteres e sinopses do catálogo cinematográfico, acessado diretamente via requisições HTTP REST. |
 
 ---
 
 ## 📁 Estrutura do Projeto
 
 ```text
-movie-catalog/
+kreato/
 ├── auth-service/              # Microserviço de Autenticação & Tokens
 │   ├── prisma/
 │   │   └── schema.prisma      # Modelagem Usuario, RefreshToken, ResetToken
@@ -131,19 +151,19 @@ movie-catalog/
 │   │   ├── swagger.ts         # Especificação OpenAPI / Swagger
 │   │   └── server.ts
 │   └── Dockerfile
-├── backend/                   # Microserviço Principal (Catálogo, Perfil, MinIO)
+├── backend/                   # Microserviço Principal (Perfil, MinIO)
 │   ├── prisma/
-│   │   └── schema.prisma      # Modelagem Usuario, Favorito, Comentario
+│   │   └── schema.prisma      # Modelagem Usuario
 │   ├── src/
-│   │   ├── controller/        # UserController, FavoriteController, CommentController
+│   │   ├── controller/        # UserController
 │   │   ├── middlewares/       # AuthMiddleware & AdminMiddleware
 │   │   ├── utils/             # minio.ts (S3 Upload/Stream) & prisma.ts
 │   │   └── server.ts
 │   └── Dockerfile
 ├── frontend/                  # Aplicação React
 │   ├── src/
-│   │   ├── api/               # tmdb.ts & backend.ts (Profile, Avatar, Auth, Comments)
-│   │   ├── components/        # ProfilePage, Navbar, MovieCard, AuthPage, Modais
+│   │   ├── api/               # backend.ts (Profile, Avatar, Auth)
+│   │   ├── components/        # ProfilePage, Navbar, AuthPage, Modais
 │   │   ├── context/           # AuthContext (Gestão de estado da sessão)
 │   │   └── index.css          # Estilos globais e componentes da UI
 │   └── Dockerfile
@@ -177,8 +197,7 @@ DATABASE_PORT="3306"
 # Segredo de Autenticação
 JWT_SECRET="seu_jwt_secret_super_seguro"
 
-# Chave API TMDB
-VITE_TMDB_API_KEY=sua_chave_api_tmdb
+# Frontend
 VITE_API_BASE_URL=/api
 
 # Configurações MinIO (Object Storage S3)
@@ -233,17 +252,6 @@ docker compose up --build -d
 - `POST /api/user/avatar`: Faz o upload da foto de perfil para o MinIO e salva a referência no MySQL.
 - `GET /api/user/avatar/:filename`: Serve a imagem de perfil armazenada no MinIO.
 - `DELETE /api/user/avatar`: Remove a foto de perfil do MinIO e limpa a referência no banco.
-
-### Favoritos (`backend`)
-- `GET /api/favorite`: Lista os filmes favoritos do usuário logado.
-- `POST /api/favorite`: Adiciona um filme aos favoritos.
-- `DELETE /api/favorite/:id`: Remove um filme dos favoritos pelo ID.
-
-### Comentários (`backend`)
-- `GET /api/comment/:movieId`: Lista os comentários de um filme.
-- `GET /api/comment/admin/all`: Lista todos os comentários do sistema com dados dos autores (`ADMIN`).
-- `POST /api/comment`: Publica um novo comentário.
-- `DELETE /api/comment/delete/:id`: Remove um comentário (Autor ou `ADMIN`).
 
 ### Auditoria de Logs (`log-service`)
 - `GET /api/logs`: Consulta o histórico de eventos e logs de auditoria via Redis Stream (`ADMIN`).
