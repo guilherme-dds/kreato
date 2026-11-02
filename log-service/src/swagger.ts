@@ -78,6 +78,8 @@ export const logSwaggerDocument = {
                       acao: "VERIFY_STRIPE_PAYMENT_SUCCESS",
                       timestamp: "2026-09-28T14:00:05.000Z",
                       ip: "127.0.0.1",
+                      entidade: "assinatura",
+                      detalhes: { plano: "CREATOR" },
                     },
                   ],
                 },
@@ -142,6 +144,22 @@ export const logSwaggerDocument = {
           acao: { type: "string", example: "LOGIN" },
           timestamp: { type: "string", format: "date-time", example: "2026-09-28T14:00:00.000Z" },
           ip: { type: "string", example: "127.0.0.1" },
+          entidade: {
+            type: "string",
+            description: "Entidade de negócio afetada pelo evento (opcional)",
+            example: "assinatura",
+          },
+          entidade_id: {
+            type: "string",
+            description: "Identificador da entidade afetada (opcional)",
+            example: "42",
+          },
+          detalhes: {
+            type: "object",
+            additionalProperties: true,
+            description: "Dados adicionais do evento em JSON (opcional)",
+            example: { plano: "CREATOR" },
+          },
         },
       },
       LogsResponse: {

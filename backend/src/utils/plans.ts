@@ -73,7 +73,12 @@ export function requirePlan(minimum: Plan) {
     });
 
     if (!user || !hasPlanAtLeast(user.plano, minimum)) {
-      await logEvent({ userId: req.userId, acao: "PLAN_REQUIRED", req });
+      await logEvent({
+        userId: req.userId,
+        acao: "PLAN_REQUIRED",
+        req,
+        detalhes: { planoAtual: user?.plano ?? null, planoMinimo: minimum, rota: req.originalUrl },
+      });
       return res.status(403).json({
         error: `Recurso disponível a partir do plano ${minimum}.`,
         code: "PLAN_REQUIRED",

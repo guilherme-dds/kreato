@@ -34,6 +34,9 @@ export interface LogEntry {
   acao: string;
   timestamp: string;
   ip: string;
+  entidade?: string;
+  entidade_id?: string;
+  detalhes?: Record<string, unknown> | string;
 }
 
 const memoryLogs: LogEntry[] = [];
@@ -65,13 +68,28 @@ function parseStreamMessage(id: string, fields: string[]): LogEntry {
     }
   }
 
-  return {
+  const entry: LogEntry = {
     id,
     user_id: data.user_id || "anonymous",
     acao: data.acao || "UNKNOWN",
     timestamp: data.timestamp || new Date().toISOString(),
     ip: data.ip || "unknown",
   };
+
+  if (data.entidade) entry.entidade = data.entidade;
+  if (data.entidade_id) entry.entidade_id = data.entidade_id;
+  if (data.detalhes) entry.detalhes = parseDetails(data.detalhes);
+
+  return entry;
+}
+
+function parseDetails(raw: string): Record<string, unknown> | string {
+  try {
+    const parsed = JSON.parse(raw);
+    return parsed && typeof parsed === "object" ? parsed : raw;
+  } catch {
+    return raw;
+  }
 }
 
 async function startStreamConsumer() {
@@ -90,7 +108,8 @@ async function startStreamConsumer() {
               seenIds.add(id);
               const logEntry = parseStreamMessage(id, fields);
               memoryLogs.push(logEntry);
-              console.log(`[LOG-SERVICE XADD RECORD] id=${id} | user_id=${logEntry.user_id} | acao=${logEntry.acao} | ip=${logEntry.ip} | timestamp=${logEntry.timestamp}`);
+              const entity = logEntry.entidade ? ` | entidade=${logEntry.entidade}#${logEntry.entidade_id ?? "-"}` : "";
+              console.log(`[LOG-SERVICE XADD RECORD] id=${id} | user_id=${logEntry.user_id} | acao=${logEntry.acao}${entity} | ip=${logEntry.ip} | timestamp=${logEntry.timestamp}`);
             }
           }
         }

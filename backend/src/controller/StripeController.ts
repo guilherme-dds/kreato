@@ -169,7 +169,13 @@ export class StripeController {
         },
       });
 
-      await logEvent({ userId, acao: "VERIFY_STRIPE_PAYMENT_SUCCESS", req });
+      await logEvent({
+        userId,
+        acao: "VERIFY_STRIPE_PAYMENT_SUCCESS",
+        req,
+        entidade: "assinatura",
+        detalhes: { plano: "CREATOR" },
+      });
 
       return res.json({ user: updatedUser, success: true });
     } catch (error: any) {
@@ -284,7 +290,13 @@ export class StripeController {
         },
       });
 
-      await logEvent({ userId, acao: nextState ? "MOCK_UPGRADE_PLAN" : "MOCK_CANCEL_PLAN", req });
+      await logEvent({
+        userId,
+        acao: nextState ? "MOCK_UPGRADE_PLAN" : "MOCK_CANCEL_PLAN",
+        req,
+        entidade: "assinatura",
+        detalhes: { plano: updatedUser.plano },
+      });
 
       return res.json({
         user: updatedUser,
@@ -343,7 +355,13 @@ export class StripeController {
         },
       });
 
-      await logEvent({ userId, acao: "CANCEL_SUBSCRIPTION", req });
+      await logEvent({
+        userId,
+        acao: "CANCEL_SUBSCRIPTION",
+        req,
+        entidade: "assinatura",
+        detalhes: { plano: "FREE" },
+      });
 
       return res.json({ user: updatedUser, message: "Assinatura cancelada com sucesso." });
     } catch (error: any) {
