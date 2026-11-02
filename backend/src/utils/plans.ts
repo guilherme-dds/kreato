@@ -57,6 +57,14 @@ export function getPlanLimits(plan: unknown): PlanLimits {
   return PLAN_LIMITS[normalizePlan(plan)];
 }
 
+/** Limites em formato serializável: recursos ilimitados viram null no JSON */
+export function serializePlanLimits(plan: unknown): Record<keyof PlanLimits, number | null> {
+  const limits = getPlanLimits(plan);
+  return Object.fromEntries(
+    Object.entries(limits).map(([resource, value]) => [resource, Number.isFinite(value) ? value : null]),
+  ) as Record<keyof PlanLimits, number | null>;
+}
+
 export function isWithinLimit(plan: unknown, resource: keyof PlanLimits, currentUsage: number): boolean {
   return currentUsage < getPlanLimits(plan)[resource];
 }

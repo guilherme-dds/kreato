@@ -2,7 +2,9 @@ import { Router } from "express";
 import multer from "multer";
 import { UserController } from "./controller/UserController.js";
 import { StripeController } from "./controller/StripeController.js";
+import { WorkspaceController } from "./controller/WorkspaceController.js";
 import { AuthMiddleware } from "./middlewares/auth.js";
+import { WorkspaceMiddleware, requireWorkspaceRole } from "./middlewares/workspace.js";
 
 const upload = multer({
   storage: multer.memoryStorage(),
@@ -13,6 +15,7 @@ const upload = multer({
 
 const usercontroller = new UserController();
 const stripeController = new StripeController();
+const workspaceController = new WorkspaceController();
 
 export const router = Router();
 
@@ -45,6 +48,28 @@ router.get("/api/user/avatar/:filename", (req, res) => usercontroller.serveAvata
 
 router.delete("/user/avatar", AuthMiddleware, (req, res) => usercontroller.removeAvatar(req, res));
 router.delete("/api/user/avatar", AuthMiddleware, (req, res) => usercontroller.removeAvatar(req, res));
+
+// Workspace Routes
+router.get("/workspaces", AuthMiddleware, (req, res) => workspaceController.index(req, res));
+router.get("/api/workspaces", AuthMiddleware, (req, res) => workspaceController.index(req, res));
+
+router.get("/workspaces/current", AuthMiddleware, WorkspaceMiddleware, (req, res) => workspaceController.current(req, res));
+router.get("/api/workspaces/current", AuthMiddleware, WorkspaceMiddleware, (req, res) => workspaceController.current(req, res));
+
+router.patch(
+  "/workspaces/current",
+  AuthMiddleware,
+  WorkspaceMiddleware,
+  requireWorkspaceRole("DONO", "GESTOR"),
+  (req, res) => workspaceController.updateCurrent(req, res)
+);
+router.patch(
+  "/api/workspaces/current",
+  AuthMiddleware,
+  WorkspaceMiddleware,
+  requireWorkspaceRole("DONO", "GESTOR"),
+  (req, res) => workspaceController.updateCurrent(req, res)
+);
 
 // Stripe Routes
 router.post("/stripe/create-checkout-session", AuthMiddleware, (req, res) => stripeController.createCheckoutSession(req, res));

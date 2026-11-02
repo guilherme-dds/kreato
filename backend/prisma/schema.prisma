@@ -20,8 +20,10 @@ model Usuario {
   fotoPerfil           String?  @db.Text
   criadoEm             DateTime @default(now())
 
-  refreshTokens        RefreshToken[]
-  resetTokens          ResetToken[]
+  refreshTokens  RefreshToken[]
+  resetTokens    ResetToken[]
+  workspacesDono Workspace[]       @relation("WorkspaceDono")
+  participacoes  MembroWorkspace[]
 }
 
 model RefreshToken {
@@ -42,4 +44,32 @@ model ResetToken {
   usado     Boolean  @default(false)
 
   usuario Usuario @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+}
+
+model Workspace {
+  id                 String   @id @default(uuid()) @db.VarChar(36)
+  nome               String   @db.VarChar(100)
+  donoId             String   @db.VarChar(36)
+  // Preenchido apenas no workspace pessoal (= donoId), garantindo um único por usuário
+  pessoalDoUsuarioId String?  @unique @db.VarChar(36)
+  criadoEm           DateTime @default(now())
+
+  dono    Usuario           @relation("WorkspaceDono", fields: [donoId], references: [id], onDelete: Cascade)
+  membros MembroWorkspace[]
+
+  @@index([donoId])
+}
+
+model MembroWorkspace {
+  id          Int      @id @default(autoincrement())
+  workspaceId String   @db.VarChar(36)
+  usuarioId   String   @db.VarChar(36)
+  papel       String   @default("EDITOR") @db.VarChar(20)
+  criadoEm    DateTime @default(now())
+
+  workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  usuario   Usuario   @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+
+  @@unique([workspaceId, usuarioId])
+  @@index([usuarioId])
 }
