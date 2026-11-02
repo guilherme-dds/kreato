@@ -49,8 +49,7 @@ export const authSwaggerDocument = {
               example: {
                 nome: "Guilherme Santos",
                 email: "guilherme@example.com",
-                password: "senhaSegura123",
-                role: "user"
+                password: "senhaSegura123"
               }
             }
           }
@@ -71,7 +70,8 @@ export const authSwaggerDocument = {
                     id: "cly1234567890abcdef",
                     nome: "Guilherme Santos",
                     email: "guilherme@example.com",
-                    role: "user",
+                    role: "creator",
+                    plano: "FREE",
                     criadoEm: "2026-09-28T14:00:00.000Z"
                   }
                 }
@@ -138,7 +138,8 @@ export const authSwaggerDocument = {
                     id: "cly1234567890abcdef",
                     email: "guilherme@example.com",
                     nome: "Guilherme Santos",
-                    role: "user"
+                    role: "creator",
+                    plano: "FREE"
                   },
                   token: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
                   refreshToken: "e7b8c9d0-1234-5678-9abc-def012345678"
@@ -323,7 +324,7 @@ export const authSwaggerDocument = {
                 example: {
                   valid: true,
                   userId: "cly1234567890abcdef",
-                  role: "user"
+                  role: "creator"
                 }
               }
             }
@@ -504,8 +505,7 @@ export const authSwaggerDocument = {
         properties: {
           nome: { type: "string", example: "Guilherme Santos" },
           email: { type: "string", format: "email", example: "guilherme@example.com" },
-          password: { type: "string", format: "password", example: "senhaSegura123" },
-          role: { type: "string", enum: ["user", "admin"], example: "user" }
+          password: { type: "string", format: "password", example: "senhaSegura123" }
         }
       },
       LoginDto: {
@@ -522,7 +522,8 @@ export const authSwaggerDocument = {
           id: { type: "string", example: "cly1234567890abcdef" },
           nome: { type: "string", example: "Guilherme Santos" },
           email: { type: "string", example: "guilherme@example.com" },
-          role: { type: "string", example: "user" },
+          role: { type: "string", enum: ["creator", "admin"], example: "creator" },
+          plano: { type: "string", enum: ["FREE", "CREATOR", "STUDIO"], example: "FREE" },
           criadoEm: { type: "string", format: "date-time", example: "2026-09-28T14:00:00.000Z" }
         }
       },
@@ -535,7 +536,8 @@ export const authSwaggerDocument = {
               id: { type: "string", example: "cly1234567890abcdef" },
               email: { type: "string", example: "guilherme@example.com" },
               nome: { type: "string", example: "Guilherme Santos" },
-              role: { type: "string", example: "user" }
+              role: { type: "string", enum: ["creator", "admin"], example: "creator" },
+              plano: { type: "string", enum: ["FREE", "CREATOR", "STUDIO"], example: "FREE" }
             }
           },
           token: { type: "string", example: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..." },

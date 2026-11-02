@@ -38,7 +38,6 @@ paths:
               nome: Guilherme Santos
               email: guilherme@example.com
               password: senhaSegura123
-              role: user
       responses:
         '201':
           description: Usuário cadastrado com sucesso
@@ -54,7 +53,8 @@ paths:
                   id: cly1234567890abcdef
                   nome: Guilherme Santos
                   email: guilherme@example.com
-                  role: user
+                  role: creator
+                  plano: FREE
                   criadoEm: '2026-09-28T14:00:00.000Z'
         '400':
           description: Dados incompletos ou e-mail já cadastrado
@@ -107,7 +107,8 @@ paths:
                   id: cly1234567890abcdef
                   email: guilherme@example.com
                   nome: Guilherme Santos
-                  role: user
+                  role: creator
+                  plano: FREE
                 token: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
                 refreshToken: e7b8c9d0-1234-5678-9abc-def012345678
         '400':
@@ -260,7 +261,7 @@ paths:
               example:
                 valid: true
                 userId: cly1234567890abcdef
-                role: user
+                role: creator
         '401':
           description: Token ausente, inválido ou expirado
           content:
@@ -426,12 +427,6 @@ components:
           type: string
           format: password
           example: senhaSegura123
-        role:
-          type: string
-          enum:
-            - user
-            - admin
-          example: user
     LoginDto:
       type: object
       required:
@@ -460,7 +455,17 @@ components:
           example: guilherme@example.com
         role:
           type: string
-          example: user
+          enum:
+            - creator
+            - admin
+          example: creator
+        plano:
+          type: string
+          enum:
+            - FREE
+            - CREATOR
+            - STUDIO
+          example: FREE
         criadoEm:
           type: string
           format: date-time
@@ -482,7 +487,17 @@ components:
               example: Guilherme Santos
             role:
               type: string
-              example: user
+              enum:
+                - creator
+                - admin
+              example: creator
+            plano:
+              type: string
+              enum:
+                - FREE
+                - CREATOR
+                - STUDIO
+              example: FREE
         token:
           type: string
           example: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...

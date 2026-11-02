@@ -12,8 +12,8 @@ model Usuario {
   nome                 String   @db.VarChar(100)
   email                String   @unique @db.VarChar(150)
   senhaHash            String   @db.VarChar(255)
-  role                 String   @default("user") @db.VarChar(20)
-  isPremium            Boolean  @default(false)
+  role                 String   @default("creator") @db.VarChar(20)
+  plano                String   @default("FREE") @db.VarChar(20)
   stripeCustomerId     String?  @db.VarChar(255)
   stripeSubscriptionId String?  @db.VarChar(255)
   bio                  String?  @db.Text

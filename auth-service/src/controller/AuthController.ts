@@ -8,7 +8,7 @@ import { logEvent } from "../utils/logger.js";
 export class AuthController {
   async create(req: Request, res: Response) {
     try {
-      const { nome, email, password, role } = req.body || {};
+      const { nome, email, password } = req.body || {};
 
       if (!email || !password || !nome) {
         return res.status(400).json({ error: "Nome, email e senha são obrigatórios." });
@@ -26,22 +26,21 @@ export class AuthController {
         return res.status(400).json({ error: "User exists" });
       }
 
-      const userRole = role === "admin" ? "admin" : "user";
-
+      // Self-registration always creates a creator; admins are promoted directly in the database
       const user = await prisma.usuario.create({
         data: {
           nome,
           email,
           senhaHash: hash_password,
-          role: userRole,
-          isPremium: false,
+          role: "creator",
+          plano: "FREE",
         },
         select: {
           id: true,
           nome: true,
           email: true,
           role: true,
-          isPremium: true,
+          plano: true,
           bio: true,
           fotoPerfil: true,
           criadoEm: true,
@@ -87,7 +86,7 @@ export class AuthController {
       }
 
       const token = jwt.sign(
-        { id: user.id, role: user.role, isPremium: user.isPremium },
+        { id: user.id, role: user.role },
         JWT_SECRET,
         { expiresIn: "15m" }
       );
@@ -104,13 +103,13 @@ export class AuthController {
         },
       });
 
-      const { id, nome, role, isPremium, bio, fotoPerfil } = user;
+      const { id, nome, role, plano, bio, fotoPerfil } = user;
 
       // Log LOGIN event to Redis Stream via XADD
       await logEvent({ userId: id, acao: "LOGIN", req });
 
       return res.json({
-        user: { id, email, nome, role, isPremium: Boolean(isPremium), bio: bio || "", fotoPerfil: fotoPerfil || null },
+        user: { id, email, nome, role, plano, bio: bio || "", fotoPerfil: fotoPerfil || null },
         token,
         refreshToken: refreshTokenValue,
       });
@@ -183,7 +182,7 @@ export class AuthController {
       }
 
       const newToken = jwt.sign(
-        { id: storedToken.usuarioId, role: storedToken.usuario.role, isPremium: storedToken.usuario.isPremium },
+        { id: storedToken.usuarioId, role: storedToken.usuario.role },
         JWT_SECRET,
         { expiresIn: "15m" }
       );
@@ -226,7 +225,7 @@ export class AuthController {
         return res.status(401).json({ valid: false, error: "Token invalid" });
       }
 
-      return res.json({ valid: true, userId: decoded.id, role: decoded.role, isPremium: decoded.isPremium });
+      return res.json({ valid: true, userId: decoded.id, role: decoded.role });
     } catch (error: any) {
       return res.status(401).json({ valid: false, error: error.message || "Token invalid" });
     }

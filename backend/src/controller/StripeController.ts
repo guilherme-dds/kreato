@@ -2,6 +2,7 @@ import type { Request, Response } from "express";
 import Stripe from "stripe";
 import prisma from "../utils/prisma.js";
 import { logEvent } from "../utils/logger.js";
+import { isPaidPlan } from "../utils/plans.js";
 
 function getStripeInstance(): Stripe | null {
   const secretKey = process.env.STRIPE_SECRET_KEY;
@@ -24,7 +25,7 @@ export function getFrontendUrl(req: Request): string {
 
 export class StripeController {
   /**
-   * Cria uma Sessão do Stripe Checkout para assinatura do Plano Premium
+   * Cria uma Sessão do Stripe Checkout para assinatura do plano pago
    */
   async createCheckoutSession(req: Request, res: Response) {
     const { userId } = req;
@@ -44,7 +45,7 @@ export class StripeController {
       const stripe = getStripeInstance();
       const frontendUrl = getFrontendUrl(req);
 
-      if (user.isPremium) {
+      if (isPaidPlan(user.plano)) {
         if (stripe && user.stripeCustomerId && !user.stripeCustomerId.startsWith("cus_test_mock_")) {
           try {
             const portalSession = await stripe.billingPortal.sessions.create({
@@ -58,7 +59,7 @@ export class StripeController {
         }
         return res.json({
           url: `${frontendUrl}/?stripe_status=manage_mock`,
-          message: "Você já é um membro Premium!",
+          message: "Você já possui um plano pago ativo!",
         });
       }
 
@@ -94,7 +95,7 @@ export class StripeController {
             price_data: {
               currency: "brl",
               product_data: {
-                name: "Plano Premium Kreato",
+                name: "Kreato Creator",
                 description: "Selo exclusivo e recursos ampliados para planejar e organizar seus conteúdos.",
               },
               unit_amount: 1990, // R$ 19,90/mês em centavos
@@ -121,7 +122,7 @@ export class StripeController {
   }
 
   /**
-   * Verifica uma sessão do Stripe Checkout e ativa o plano Premium se o pagamento estiver concluído
+   * Verifica uma sessão do Stripe Checkout e ativa o plano pago se o pagamento estiver concluído
    */
   async verifySession(req: Request, res: Response) {
     const { userId } = req;
@@ -149,7 +150,7 @@ export class StripeController {
         }
       }
 
-      const dataToUpdate: Record<string, any> = { isPremium: true };
+      const dataToUpdate: Record<string, any> = { plano: "CREATOR" };
       if (customerId) dataToUpdate.stripeCustomerId = customerId;
       if (subscriptionId) dataToUpdate.stripeSubscriptionId = subscriptionId;
 
@@ -161,7 +162,7 @@ export class StripeController {
           nome: true,
           email: true,
           role: true,
-          isPremium: true,
+          plano: true,
           bio: true,
           fotoPerfil: true,
           criadoEm: true,
@@ -202,7 +203,7 @@ export class StripeController {
           const subscriptionId =
             typeof session.subscription === "string" ? session.subscription : session.subscription?.id;
 
-          const dataToUpdate: Record<string, any> = { isPremium: true };
+          const dataToUpdate: Record<string, any> = { plano: "CREATOR" };
           if (customerId) dataToUpdate.stripeCustomerId = customerId;
           if (subscriptionId) dataToUpdate.stripeSubscriptionId = subscriptionId;
 
@@ -211,7 +212,7 @@ export class StripeController {
               where: { id: userId },
               data: dataToUpdate,
             });
-            console.log(`[Stripe Webhook] Usuário ${userId} atualizado para Premium!`);
+            console.log(`[Stripe Webhook] Usuário ${userId} atualizado para o plano CREATOR!`);
           } else if (session.customer_email) {
             await prisma.usuario.update({
               where: { email: session.customer_email },
@@ -229,7 +230,7 @@ export class StripeController {
           if (customerId) {
             await prisma.usuario.updateMany({
               where: { stripeCustomerId: customerId },
-              data: { isPremium: false, stripeSubscriptionId: null },
+              data: { plano: "FREE", stripeSubscriptionId: null },
             });
             console.log(`[Stripe Webhook] Assinatura cancelada para customer ${customerId}`);
           }
@@ -248,7 +249,7 @@ export class StripeController {
   }
 
   /**
-   * Alterna modo Premium para testes instantâneos no ambiente de desenvolvimento
+   * Alterna entre os planos FREE e CREATOR para testes instantâneos no ambiente de desenvolvimento
    */
   async mockUpgrade(req: Request, res: Response) {
     const { userId } = req;
@@ -259,15 +260,15 @@ export class StripeController {
     try {
       const user = await prisma.usuario.findUnique({
         where: { id: userId },
-        select: { isPremium: true },
+        select: { plano: true },
       });
 
-      const nextState = !user?.isPremium;
+      const nextState = !isPaidPlan(user?.plano);
 
       const updatedUser = await prisma.usuario.update({
         where: { id: userId },
         data: {
-          isPremium: nextState,
+          plano: nextState ? "CREATOR" : "FREE",
           stripeCustomerId: nextState ? `cus_test_mock_${Date.now()}` : null,
           stripeSubscriptionId: nextState ? `sub_test_mock_${Date.now()}` : null,
         },
@@ -276,23 +277,23 @@ export class StripeController {
           nome: true,
           email: true,
           role: true,
-          isPremium: true,
+          plano: true,
           bio: true,
           fotoPerfil: true,
           criadoEm: true,
         },
       });
 
-      await logEvent({ userId, acao: nextState ? "MOCK_UPGRADE_PREMIUM" : "MOCK_CANCEL_PREMIUM", req });
+      await logEvent({ userId, acao: nextState ? "MOCK_UPGRADE_PLAN" : "MOCK_CANCEL_PLAN", req });
 
       return res.json({
         user: updatedUser,
         message: nextState
-          ? "Parabéns! Você agora é um membro Premium em modo de teste!"
-          : "Plano Premium desativado com sucesso.",
+          ? "Parabéns! Você agora é assinante do plano Creator em modo de teste!"
+          : "Plano pago desativado com sucesso.",
       });
     } catch (error: any) {
-      console.error("Erro ao alternar status premium:", error);
+      console.error("Erro ao alternar plano:", error);
       return res.status(500).json({ error: "Erro ao atualizar status do plano." });
     }
   }
@@ -327,7 +328,7 @@ export class StripeController {
       const updatedUser = await prisma.usuario.update({
         where: { id: userId },
         data: {
-          isPremium: false,
+          plano: "FREE",
           stripeSubscriptionId: null,
         },
         select: {
@@ -335,7 +336,7 @@ export class StripeController {
           nome: true,
           email: true,
           role: true,
-          isPremium: true,
+          plano: true,
           bio: true,
           fotoPerfil: true,
           criadoEm: true,
@@ -344,7 +345,7 @@ export class StripeController {
 
       await logEvent({ userId, acao: "CANCEL_SUBSCRIPTION", req });
 
-      return res.json({ user: updatedUser, message: "Assinatura do Plano Premium cancelada com sucesso." });
+      return res.json({ user: updatedUser, message: "Assinatura cancelada com sucesso." });
     } catch (error: any) {
       console.error("Erro ao cancelar assinatura:", error);
       return res.status(500).json({ error: "Erro ao cancelar assinatura." });

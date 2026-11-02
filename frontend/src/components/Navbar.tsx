@@ -2,6 +2,7 @@ import React from "react";
 import { Film, LogOut, User as UserIcon, Sparkles, Crown } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
 import { PremiumBadge } from "./PremiumBadge";
+import { PLAN_LABELS, getUserPlan, isPaidPlan } from "../utils/plans";
 
 interface NavbarProps {
   openPremiumModal?: () => void;
@@ -17,7 +18,8 @@ export const Navbar: React.FC<NavbarProps> = ({
   currentView = "home",
 }) => {
   const { user, isAuthenticated, logout } = useAuth();
-  const isPremium = Boolean(user?.isPremium);
+  const plan = getUserPlan(user);
+  const isPaid = isPaidPlan(user);
 
   return (
     <header className="navbar-header">
@@ -39,12 +41,12 @@ export const Navbar: React.FC<NavbarProps> = ({
           {/* Premium Plan Upgrade / Status Button */}
           {isAuthenticated && openPremiumModal && (
             <button
-              className={`nav-btn ${isPremium ? "premium-active-btn" : "premium-nav-btn"}`}
+              className={`nav-btn ${isPaid ? "premium-active-btn" : "premium-nav-btn"}`}
               onClick={openPremiumModal}
-              title={isPremium ? "Você é um Membro Premium!" : "Assinar o Plano Premium"}
+              title={isPaid ? `Você é assinante do plano ${PLAN_LABELS[plan]}` : "Conhecer os planos pagos"}
             >
-              <Crown size={18} className={isPremium ? "crown-active" : "crown-glow"} />
-              <span className="btn-label">{isPremium ? "Premium" : "Seja Premium"}</span>
+              <Crown size={18} className={isPaid ? "crown-active" : "crown-glow"} />
+              <span className="btn-label">{isPaid ? PLAN_LABELS[plan] : "Fazer upgrade"}</span>
             </button>
           )}
 
@@ -65,7 +67,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                 </div>
                 <div className="user-name-wrapper">
                   <span className="user-email">{user?.nome || user?.email.split("@")[0]}</span>
-                  {isPremium && <PremiumBadge size="sm" showIconOnly />}
+                  {isPaid && <PremiumBadge plan={plan} size="sm" showIconOnly />}
                 </div>
               </div>
               <button className="logout-btn" onClick={logout} title="Sair da Conta">

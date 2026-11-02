@@ -2,6 +2,7 @@ import React, { useState } from "react";
 import { X, Crown, Sparkles, Zap, ShieldCheck, Lightbulb, CalendarDays, BarChart3, CreditCard } from "lucide-react";
 import { createStripeCheckoutSessionApi, toggleMockPremiumApi, cancelStripeSubscriptionApi } from "../api/backend";
 import { useAuth } from "../context/AuthContext";
+import { isPaidPlan } from "../utils/plans";
 
 interface PremiumModalProps {
   isOpen: boolean;
@@ -25,8 +26,8 @@ export const PremiumModal: React.FC<PremiumModalProps> = ({ isOpen, onClose, sho
         showToast("info", "Redirecionando para o Stripe...");
         window.location.href = data.url;
       } else if (data.mockActivated) {
-        updateUser({ isPremium: true });
-        showToast("success", "Plano Premium ativado com sucesso em modo de teste!");
+        updateUser({ plano: "CREATOR" });
+        showToast("success", "Plano Kreato Creator ativado com sucesso em modo de teste!");
         onClose();
       }
     } catch (err: any) {
@@ -40,16 +41,16 @@ export const PremiumModal: React.FC<PremiumModalProps> = ({ isOpen, onClose, sho
     setLoadingMock(true);
     try {
       const data = await toggleMockPremiumApi();
-      updateUser({ isPremium: data.user.isPremium });
+      updateUser({ plano: data.user.plano });
       showToast(
         "success",
-        data.user.isPremium
-          ? "🎉 Você agora é um assinante Premium em modo de teste!"
-          : "Plano Premium desativado. Você voltou para o Plano Gratuito."
+        isPaidPlan(data.user)
+          ? "🎉 Você agora é assinante do Kreato Creator em modo de teste!"
+          : "Plano pago desativado. Você voltou para o Plano Gratuito."
       );
       onClose();
     } catch (err: any) {
-      showToast("error", err.message || "Erro ao atualizar status Premium.");
+      showToast("error", err.message || "Erro ao atualizar o plano.");
     } finally {
       setLoadingMock(false);
     }
@@ -59,8 +60,8 @@ export const PremiumModal: React.FC<PremiumModalProps> = ({ isOpen, onClose, sho
     setLoadingCancel(true);
     try {
       const data = await cancelStripeSubscriptionApi();
-      updateUser({ isPremium: false, ...data.user });
-      showToast("info", "Assinatura do Plano Premium cancelada. Você voltou ao Plano Gratuito.");
+      updateUser({ plano: "FREE", ...data.user });
+      showToast("info", "Assinatura cancelada. Você voltou ao Plano Gratuito.");
       onClose();
     } catch (err: any) {
       showToast("error", err.message || "Erro ao cancelar assinatura.");
@@ -80,7 +81,7 @@ export const PremiumModal: React.FC<PremiumModalProps> = ({ isOpen, onClose, sho
           <div className="premium-icon-wrapper">
             <Crown size={38} className="crown-glow" />
           </div>
-          <h2>Plano Kreato <span className="gold-text">PREMIUM</span></h2>
+          <h2>Kreato <span className="gold-text">CREATOR</span></h2>
           <p>Desbloqueie todo o potencial da plataforma sem nenhuma limitação!</p>
         </div>
 
@@ -90,8 +91,8 @@ export const PremiumModal: React.FC<PremiumModalProps> = ({ isOpen, onClose, sho
               <Sparkles size={22} />
             </div>
             <div>
-              <h4>Selo Exclusivo Premium</h4>
-              <p>Destaque-se com o selo dourado de membro Premium no seu perfil.</p>
+              <h4>Selo Exclusivo de Assinante</h4>
+              <p>Destaque-se com o selo dourado do seu plano no perfil.</p>
             </div>
           </div>
 
@@ -143,12 +144,12 @@ export const PremiumModal: React.FC<PremiumModalProps> = ({ isOpen, onClose, sho
               <CreditCard size={18} />
               {loadingStripe
                 ? "Conectando ao Stripe..."
-                : user?.isPremium
+                : isPaidPlan(user)
                 ? "Gerenciar no Stripe"
                 : "Assinar Agora via Stripe"}
             </button>
 
-            {user?.isPremium ? (
+            {isPaidPlan(user) ? (
               <button
                 className="btn btn-secondary-mock"
                 onClick={handleCancelSubscription}

@@ -1,9 +1,11 @@
+export type Plan = "FREE" | "CREATOR" | "STUDIO";
+
 export interface User {
   id: string;
   nome?: string;
   email: string;
-  role?: "admin" | "user" | string;
-  isPremium?: boolean;
+  role?: "admin" | "creator" | string;
+  plano?: Plan;
   stripeCustomerId?: string | null;
   stripeSubscriptionId?: string | null;
   bio?: string;

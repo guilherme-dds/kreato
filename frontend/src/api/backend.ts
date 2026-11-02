@@ -263,7 +263,7 @@ export async function toggleMockPremiumApi(token?: string | null): Promise<{ use
     "/stripe/mock-upgrade",
     { method: "POST" },
     token,
-    "Erro ao alternar status do Plano Premium"
+    "Erro ao alternar o plano"
   );
 }
 

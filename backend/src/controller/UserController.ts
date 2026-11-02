@@ -1,5 +1,6 @@
 import type { Request, Response } from "express";
 import prisma from "../utils/prisma.js";
+import { isPaidPlan } from "../utils/plans.js";
 import {
   uploadAvatarToMinio,
   getAvatarFromMinio,
@@ -14,7 +15,7 @@ export class UserController {
         nome: true,
         email: true,
         role: true,
-        isPremium: true,
+        plano: true,
         bio: true,
         fotoPerfil: true,
         criadoEm: true,
@@ -37,7 +38,7 @@ export class UserController {
           nome: true,
           email: true,
           role: true,
-          isPremium: true,
+          plano: true,
           stripeCustomerId: true,
           stripeSubscriptionId: true,
           bio: true,
@@ -50,8 +51,8 @@ export class UserController {
         return res.status(404).json({ error: "Usuário não encontrado." });
       }
 
-      // Se o usuário não estiver marcado como premium no banco local, mas tiver um customerId no Stripe, sincroniza automaticamente
-      if (!user.isPremium && user.stripeCustomerId && !user.stripeCustomerId.startsWith("cus_test_mock_")) {
+      // Se o usuário estiver no plano gratuito no banco local, mas tiver um customerId no Stripe, sincroniza automaticamente
+      if (!isPaidPlan(user.plano) && user.stripeCustomerId && !user.stripeCustomerId.startsWith("cus_test_mock_")) {
         const secretKey = process.env.STRIPE_SECRET_KEY;
         if (secretKey && secretKey.trim().length > 0 && !secretKey.includes("YOUR_STRIPE")) {
           try {
@@ -63,12 +64,12 @@ export class UserController {
               limit: 1,
             });
 
-            if (subs.data && subs.data.length > 0) {
-              const activeSub = subs.data[0];
+            const activeSub = subs.data?.[0];
+            if (activeSub) {
               const updatedUser = await prisma.usuario.update({
                 where: { id: userId },
                 data: {
-                  isPremium: true,
+                  plano: "CREATOR",
                   stripeSubscriptionId: activeSub.id,
                 },
                 select: {
@@ -76,7 +77,7 @@ export class UserController {
                   nome: true,
                   email: true,
                   role: true,
-                  isPremium: true,
+                  plano: true,
                   stripeCustomerId: true,
                   stripeSubscriptionId: true,
                   bio: true,
@@ -127,7 +128,7 @@ export class UserController {
           nome: true,
           email: true,
           role: true,
-          isPremium: true,
+          plano: true,
           bio: true,
           fotoPerfil: true,
           criadoEm: true,
@@ -194,7 +195,7 @@ export class UserController {
           nome: true,
           email: true,
           role: true,
-          isPremium: true,
+          plano: true,
           bio: true,
           fotoPerfil: true,
           criadoEm: true,
@@ -270,7 +271,7 @@ export class UserController {
           nome: true,
           email: true,
           role: true,
-          isPremium: true,
+          plano: true,
           bio: true,
           fotoPerfil: true,
           criadoEm: true,

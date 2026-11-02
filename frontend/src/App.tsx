@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback } from "react";
 import { AuthProvider, useAuth } from "./context/AuthContext";
 import { getUserProfileApi, verifyStripeSessionApi } from "./api/backend";
+import { PLAN_LABELS, getUserPlan } from "./utils/plans";
 
 import { Navbar } from "./components/Navbar";
 import { PremiumModal } from "./components/PremiumModal";
@@ -32,30 +33,30 @@ const MainApp: React.FC<MainAppProps> = ({ showToast }) => {
         verifyStripeSessionApi(token, sessionId)
           .then((data) => {
             if (data.user) {
-              updateUser({ isPremium: data.user.isPremium, ...data.user });
-              showToast("success", "🎉 Parabéns! Sua assinatura do Plano Premium foi ativada com sucesso!");
+              updateUser(data.user);
+              showToast("success", `🎉 Parabéns! Sua assinatura do plano ${PLAN_LABELS[getUserPlan(data.user)]} foi ativada com sucesso!`);
             }
           })
           .catch((err) => {
             console.error("Erro ao verificar sessão do Stripe:", err);
             getUserProfileApi(token).then((u) => {
-              updateUser({ isPremium: u.isPremium, ...u });
+              updateUser(u);
             }).catch(() => {});
           });
       } else {
-        showToast("success", "🎉 Parabéns! Sua assinatura do Plano Premium foi ativada!");
+        showToast("success", "🎉 Parabéns! Sua assinatura foi ativada!");
       }
       window.history.replaceState({}, document.title, window.location.pathname);
     } else if (stripeStatus === "cancel") {
       showToast("info", "Fluxo de pagamento com o Stripe cancelado. Você continua no Plano Gratuito.");
       if (token) {
         getUserProfileApi(token).then((u) => {
-          updateUser({ isPremium: u.isPremium, ...u });
+          updateUser(u);
         }).catch(() => {});
       }
       window.history.replaceState({}, document.title, window.location.pathname);
     } else if (stripeStatus === "manage_mock") {
-      showToast("info", "Você já possui uma assinatura do Plano Premium ativa.");
+      showToast("info", "Você já possui uma assinatura ativa.");
       window.history.replaceState({}, document.title, window.location.pathname);
     }
   }, [token, updateUser, showToast]);

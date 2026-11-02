@@ -13,6 +13,7 @@ import {
 } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
 import { PremiumBadge } from "./PremiumBadge";
+import { PLAN_LABELS, getUserPlan, isPaidPlan } from "../utils/plans";
 import {
   getUserProfileApi,
   updateUserProfileApi,
@@ -54,7 +55,7 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({
             updateUser({
               bio: bioText,
               fotoPerfil: fetchedUser.fotoPerfil,
-              isPremium: fetchedUser.isPremium,
+              plano: fetchedUser.plano,
             });
           }
         })
@@ -159,7 +160,8 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({
   };
 
   const userName = user?.nome || (user?.email ? user.email.split("@")[0] : "Usuário");
-  const isPremium = Boolean(user?.isPremium);
+  const plan = getUserPlan(user);
+  const isPaid = isPaidPlan(user);
 
   return (
     <div className="profile-page-container">
@@ -229,23 +231,23 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({
         </div>
 
         <div className="profile-info-section">
-          {/* User Name & Premium Badge */}
+          {/* User Name & Plan Badge */}
           <div className="profile-title-row">
             <h1 className="profile-name">{userName}</h1>
-            {isPremium ? (
-              <PremiumBadge size="md" />
+            {isPaid ? (
+              <PremiumBadge plan={plan} size="md" />
             ) : (
               <span className="plan-chip free-chip">Plano Gratuito</span>
             )}
           </div>
           <span className="profile-email-sub">{user?.email}</span>
 
-          {/* Premium Plan Status Banner */}
+          {/* Plan Status Banner */}
           <div className="profile-plan-status-card">
-            {isPremium ? (
+            {isPaid ? (
               <div className="plan-status-content premium">
                 <div>
-                  <h4><Crown size={16} className="gold-text" /> Você é um Membro Premium</h4>
+                  <h4><Crown size={16} className="gold-text" /> Você é assinante do {PLAN_LABELS[plan]}</h4>
                   <p>Todos os recursos de organização desbloqueados.</p>
                 </div>
                 {openPremiumModal && (
@@ -262,7 +264,7 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({
                 </div>
                 {openPremiumModal && (
                   <button className="btn btn-sm btn-upgrade-gold" onClick={openPremiumModal}>
-                    <Sparkles size={14} /> Assinar Premium (R$ 19,90/mês)
+                    <Sparkles size={14} /> Assinar Kreato Creator (R$ 19,90/mês)
                   </button>
                 )}
               </div>
