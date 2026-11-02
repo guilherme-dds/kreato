@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { X, Crown, Sparkles, Zap, ShieldCheck, Heart, MessageSquare, ListFilter, CreditCard } from "lucide-react";
+import { X, Crown, Sparkles, Zap, ShieldCheck, Lightbulb, CalendarDays, BarChart3, CreditCard } from "lucide-react";
 import { createStripeCheckoutSessionApi, toggleMockPremiumApi, cancelStripeSubscriptionApi } from "../api/backend";
 import { useAuth } from "../context/AuthContext";
 
@@ -91,37 +91,37 @@ export const PremiumModal: React.FC<PremiumModalProps> = ({ isOpen, onClose, sho
             </div>
             <div>
               <h4>Selo Exclusivo Premium</h4>
-              <p>Destaque-se com o selo dourado de membro VIP no seu perfil e em todos os seus comentários.</p>
+              <p>Destaque-se com o selo dourado de membro Premium no seu perfil.</p>
             </div>
           </div>
 
           <div className="premium-feature-card">
             <div className="feature-icon red">
-              <Heart size={22} />
+              <Lightbulb size={22} />
             </div>
             <div>
-              <h4>Favoritos Ilimitados</h4>
-              <p>Guarde quantos filmes quiser na sua estante. Não há mais limite de 5 filmes!</p>
+              <h4>Ideias e Conteúdos Ilimitados</h4>
+              <p>Registre quantas ideias, roteiros e conteúdos quiser, sem limites de uso.</p>
             </div>
           </div>
 
           <div className="premium-feature-card">
             <div className="feature-icon blue">
-              <MessageSquare size={22} />
+              <CalendarDays size={22} />
             </div>
             <div>
-              <h4>Comentários Ilimitados</h4>
-              <p>Comente e debata em todos os seus filmes preferidos sem restrições diárias.</p>
+              <h4>Calendário Editorial Completo</h4>
+              <p>Planeje suas publicações e mantenha uma frequência consistente.</p>
             </div>
           </div>
 
           <div className="premium-feature-card">
             <div className="feature-icon purple">
-              <ListFilter size={22} />
+              <BarChart3 size={22} />
             </div>
             <div>
-              <h4>Listas Personalizadas Customizáveis</h4>
-              <p>Crie coleções exclusivas de filmes com títulos e descrições do seu próprio jeito.</p>
+              <h4>Histórico Completo de Métricas</h4>
+              <p>Compare o desempenho dos seus conteúdos e oriente suas próximas produções.</p>
             </div>
           </div>
         </div>

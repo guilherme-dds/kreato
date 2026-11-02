@@ -1,51 +1,29 @@
 import React from "react";
-import { Film, Heart, Search, LogOut, User as UserIcon, Sparkles, ShieldAlert, Crown } from "lucide-react";
+import { Film, LogOut, User as UserIcon, Sparkles, Crown } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
 import { PremiumBadge } from "./PremiumBadge";
 
 interface NavbarProps {
-  searchTerm: string;
-  setSearchTerm: (term: string) => void;
-  showOnlyFavorites: boolean;
-  setShowOnlyFavorites: (val: boolean) => void;
-  favoritesCount: number;
-  openAuthModal: () => void;
-  openAdminModal?: () => void;
   openPremiumModal?: () => void;
   onProfileClick?: () => void;
   onBrandClick?: () => void;
-  currentView?: "catalog" | "profile";
+  currentView?: "home" | "profile";
 }
 
 export const Navbar: React.FC<NavbarProps> = ({
-  searchTerm,
-  setSearchTerm,
-  showOnlyFavorites,
-  setShowOnlyFavorites,
-  favoritesCount,
-  openAuthModal,
-  openAdminModal,
   openPremiumModal,
   onProfileClick,
   onBrandClick,
-  currentView = "catalog",
+  currentView = "home",
 }) => {
   const { user, isAuthenticated, logout } = useAuth();
-  const isAdmin = user?.role?.toLowerCase() === "admin";
   const isPremium = Boolean(user?.isPremium);
-
-  const handleBrandClick = () => {
-    setShowOnlyFavorites(false);
-    if (onBrandClick) {
-      onBrandClick();
-    }
-  };
 
   return (
     <header className="navbar-header">
       <div className="navbar-container">
         {/* Brand */}
-        <div className="navbar-brand" onClick={handleBrandClick}>
+        <div className="navbar-brand" onClick={onBrandClick}>
           <div className="logo-icon-wrapper">
             <Film className="logo-icon" size={26} />
             <Sparkles className="logo-sparkle" size={14} />
@@ -56,41 +34,8 @@ export const Navbar: React.FC<NavbarProps> = ({
           </div>
         </div>
 
-        {/* Search Bar */}
-        <div className="search-box">
-          <Search className="search-icon" size={18} />
-          <input
-            type="text"
-            placeholder="Buscar por título, personagem ou ano..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className="search-input"
-          />
-          {searchTerm && (
-            <button className="search-clear" onClick={() => setSearchTerm("")}>
-              ✕
-            </button>
-          )}
-        </div>
-
         {/* Navigation Actions */}
         <div className="navbar-actions">
-          {/* Favorites Filter Toggle */}
-          <button
-            className={`nav-btn ${showOnlyFavorites && currentView === "catalog" ? "active" : ""}`}
-            onClick={() => {
-              if (currentView === "profile" && onBrandClick) {
-                onBrandClick();
-              }
-              setShowOnlyFavorites(!showOnlyFavorites);
-            }}
-            title="Filtrar Favoritos"
-          >
-            <Heart size={18} className={showOnlyFavorites && currentView === "catalog" ? "fill-heart" : ""} />
-            <span className="btn-label">Favoritos</span>
-            {favoritesCount > 0 && <span className="favorites-badge">{favoritesCount}</span>}
-          </button>
-
           {/* Premium Plan Upgrade / Status Button */}
           {isAuthenticated && openPremiumModal && (
             <button
@@ -103,21 +48,8 @@ export const Navbar: React.FC<NavbarProps> = ({
             </button>
           )}
 
-          {/* Admin Moderation Button */}
-          {isAuthenticated && isAdmin && openAdminModal && (
-            <button
-              className="nav-btn admin-nav-btn"
-              onClick={openAdminModal}
-              title="Painel de Moderação de Comentários (ADMIN)"
-            >
-              <ShieldAlert size={18} />
-              <span className="btn-label">Moderação</span>
-              <span className="admin-pill">ADMIN</span>
-            </button>
-          )}
-
           {/* User Auth Section */}
-          {isAuthenticated ? (
+          {isAuthenticated && (
             <div className={`user-menu ${currentView === "profile" ? "profile-active" : ""}`}>
               <div
                 className="user-badge clickable"
@@ -140,11 +72,6 @@ export const Navbar: React.FC<NavbarProps> = ({
                 <LogOut size={18} />
               </button>
             </div>
-          ) : (
-            <button className="login-trigger-btn" onClick={openAuthModal}>
-              <UserIcon size={18} />
-              <span>Entrar / Cadastrar</span>
-            </button>
           )}
         </div>
       </div>

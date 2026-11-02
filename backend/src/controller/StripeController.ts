@@ -95,7 +95,7 @@ export class StripeController {
               currency: "brl",
               product_data: {
                 name: "Plano Premium Kreato",
-                description: "Selo exclusivo, comentários e favoritos ilimitados e listas de filmes personalizadas.",
+                description: "Selo exclusivo e recursos ampliados para planejar e organizar seus conteúdos.",
               },
               unit_amount: 1990, // R$ 19,90/mês em centavos
               recurring: { interval: "month" as const },

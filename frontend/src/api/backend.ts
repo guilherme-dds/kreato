@@ -1,4 +1,4 @@
-import type { User, AuthResponse, RefreshTokenResponse, FavoriteItem, CommentItem, CustomList, CustomListItem } from "../types";
+import type { User, AuthResponse, RefreshTokenResponse } from "../types";
 
 export function getApiBaseUrl(): string {
   const envUrl = import.meta.env.VITE_API_BASE_URL as string;
@@ -189,84 +189,6 @@ async function fetchWithAuth<T>(
   return parseResponse<T>(response, defaultErrorMessage);
 }
 
-export async function getFavoritesApi(token?: string | null): Promise<FavoriteItem[]> {
-  const data = await fetchWithAuth<{ favoriteList?: FavoriteItem[] }>("/favorite", {}, token, "Erro ao carregar favoritos");
-  return data.favoriteList || [];
-}
-
-export async function addFavoriteApi(
-  token: string | null,
-  tmdbMovieId: number,
-  titulo: string,
-  posterPath: string | null
-): Promise<FavoriteItem> {
-  const data = await fetchWithAuth<{ newFavorite: FavoriteItem }>(
-    "/favorite",
-    {
-      method: "POST",
-      body: JSON.stringify({ tmdbMovieId: Number(tmdbMovieId), titulo, posterPath: posterPath || "" }),
-    },
-    token,
-    "Erro ao adicionar aos favoritos"
-  );
-  return data.newFavorite;
-}
-
-export async function deleteFavoriteApi(token: string | null, favoriteId: number): Promise<void> {
-  await fetchWithAuth<void>(
-    `/favorite/${favoriteId}`,
-    { method: "DELETE" },
-    token,
-    "Erro ao remover favorito"
-  );
-}
-
-export async function getCommentsApi(token: string | null, movieId: number): Promise<CommentItem[]> {
-  const data = await fetchWithAuth<{ comments?: CommentItem[] }>(
-    `/comment/${movieId}`,
-    {},
-    token,
-    "Erro ao buscar comentários"
-  );
-  return data.comments || [];
-}
-
-export async function addCommentApi(
-  token: string | null,
-  tmdbMovieId: number,
-  texto: string
-): Promise<CommentItem> {
-  const data = await fetchWithAuth<{ newComment: CommentItem }>(
-    "/comment",
-    {
-      method: "POST",
-      body: JSON.stringify({ tmdbMovieId: Number(tmdbMovieId), texto }),
-    },
-    token,
-    "Erro ao adicionar comentário"
-  );
-  return data.newComment;
-}
-
-export async function deleteCommentApi(token: string | null, commentId: number): Promise<void> {
-  await fetchWithAuth<void>(
-    `/comment/delete/${commentId}`,
-    { method: "DELETE" },
-    token,
-    "Erro ao deletar comentário"
-  );
-}
-
-export async function getAllCommentsAdminApi(token: string | null): Promise<CommentItem[]> {
-  const data = await fetchWithAuth<{ comments?: CommentItem[] }>(
-    "/comment/admin/all",
-    {},
-    token,
-    "Erro ao buscar comentários para moderação"
-  );
-  return data.comments || [];
-}
-
 export async function getUserProfileApi(token?: string | null): Promise<User> {
   const data = await fetchWithAuth<{ user: User }>(
     "/user/profile",
@@ -321,78 +243,6 @@ export async function removeUserAvatarApi(token?: string | null): Promise<User> 
     "Erro ao remover foto de perfil"
   );
   return data.user;
-}
-
-/* ==========================================================================
-   CUSTOM LISTS API (PREMIUM FEATURE)
-   ========================================================================== */
-
-export async function getCustomListsApi(token?: string | null): Promise<CustomList[]> {
-  const data = await fetchWithAuth<{ lists?: CustomList[] }>(
-    "/custom-list",
-    {},
-    token,
-    "Erro ao carregar listas personalizadas"
-  );
-  return data.lists || [];
-}
-
-export async function createCustomListApi(
-  token: string | null,
-  nome: string,
-  descricao?: string
-): Promise<CustomList> {
-  const data = await fetchWithAuth<{ list: CustomList }>(
-    "/custom-list",
-    {
-      method: "POST",
-      body: JSON.stringify({ nome, descricao }),
-    },
-    token,
-    "Erro ao criar lista personalizada"
-  );
-  return data.list;
-}
-
-export async function addMovieToCustomListApi(
-  token: string | null,
-  listId: number,
-  tmdbMovieId: number,
-  titulo: string,
-  posterPath: string | null
-): Promise<CustomListItem> {
-  const data = await fetchWithAuth<{ item: CustomListItem }>(
-    `/custom-list/${listId}/items`,
-    {
-      method: "POST",
-      body: JSON.stringify({ tmdbMovieId, titulo, posterPath }),
-    },
-    token,
-    "Erro ao adicionar filme à lista personalizada"
-  );
-  return data.item;
-}
-
-export async function removeMovieFromCustomListApi(
-  token: string | null,
-  listId: number,
-  tmdbMovieId: number
-): Promise<void> {
-  await fetchWithAuth<void>(
-    `/custom-list/${listId}/items/${tmdbMovieId}`,
-    { method: "DELETE" },
-    token,
-    "Erro ao remover filme da lista personalizada"
-  );
-}
-
-export async function deleteCustomListApi(token: string | null, listId: number): Promise<void> {
-  await fetchWithAuth<void>(
-    `/custom-list/${listId}`,
-    { method: "DELETE" },
-    token,
-    "Erro ao excluir lista personalizada"
-  );
 }
 
 /* ==========================================================================

@@ -22,9 +22,6 @@ model Usuario {
 
   refreshTokens        RefreshToken[]
   resetTokens          ResetToken[]
-  favoritos            Favorito[]
-  comentarios          Comentario[]
-  listasPersonalizadas ListaPersonalizada[]
 }
 
 model RefreshToken {
@@ -45,51 +42,4 @@ model ResetToken {
   usado     Boolean  @default(false)
 
   usuario Usuario @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
-}
-
-model Favorito {
-  id          Int      @id @default(autoincrement())
-  usuarioId   String   @db.VarChar(36)
-  tmdbMovieId Int
-  titulo      String   @db.VarChar(255)
-  posterPath  String?  @db.VarChar(255)
-  criadoEm    DateTime @default(now())
-
-  usuario Usuario @relation(fields: [usuarioId], references: [id])
-
-  @@unique([usuarioId, tmdbMovieId])
-}
-
-model Comentario {
-  id          Int      @id @default(autoincrement())
-  usuarioId   String   @db.VarChar(36)
-  tmdbMovieId Int
-  texto       String
-  criadoEm    DateTime @default(now())
-
-  usuario Usuario @relation(fields: [usuarioId], references: [id])
-}
-
-model ListaPersonalizada {
-  id        Int      @id @default(autoincrement())
-  usuarioId String   @db.VarChar(36)
-  nome      String   @db.VarChar(100)
-  descricao String?  @db.Text
-  criadoEm  DateTime @default(now())
-
-  usuario Usuario                  @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
-  itens   ItemListaPersonalizada[]
-}
-
-model ItemListaPersonalizada {
-  id                   Int      @id @default(autoincrement())
-  listaPersonalizadaId Int
-  tmdbMovieId          Int
-  titulo               String   @db.VarChar(255)
-  posterPath           String?  @db.VarChar(255)
-  criadoEm             DateTime @default(now())
-
-  lista ListaPersonalizada @relation(fields: [listaPersonalizadaId], references: [id], onDelete: Cascade)
-
-  @@unique([listaPersonalizadaId, tmdbMovieId])
 }

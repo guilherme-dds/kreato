@@ -75,7 +75,7 @@ export const logSwaggerDocument = {
                     {
                       id: "1700000005000-0",
                       user_id: "cly1234567890abcdef",
-                      acao: "CREATE_COMMENT",
+                      acao: "VERIFY_STRIPE_PAYMENT_SUCCESS",
                       timestamp: "2026-09-28T14:00:05.000Z",
                       ip: "127.0.0.1",
                     },
