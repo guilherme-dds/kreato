@@ -39,7 +39,7 @@ export class ResetController {
                     },
                     body: JSON.stringify({
                         sender: {
-                            name: "Movie Catalog",
+                            name: "Kreato",
                             email: senderEmail.trim(),
                         },
                         to: [
@@ -48,10 +48,10 @@ export class ResetController {
                                 name: user.nome || user.email,
                             },
                         ],
-                        subject: "Movie Catalog - Redefinição de Senha",
+                        subject: "Kreato - Redefinição de Senha",
                         textContent: `Clique no link a seguir para redefinir sua senha: ${resetLink}`,
                         htmlContent: `<div style="font-family: sans-serif; padding: 20px;">
-              <h2>Redefinição de Senha - Movie Catalog</h2>
+              <h2>Redefinição de Senha - Kreato</h2>
               <p>Olá, ${user.nome || "Usuário"}!</p>
               <p>Recebemos uma solicitação para redefinir sua senha. Clique no link abaixo para continuar:</p>
               <p><a href="${resetLink}" style="display: inline-block; padding: 10px 20px; background-color: #e50914; color: #fff; text-decoration: none; border-radius: 5px;">Redefinir Senha</a></p>
@@ -86,7 +86,7 @@ export class ResetController {
 
             const sender = {
                 email: senderEmail,
-                name: "Movie Catalog",
+                name: "Kreato",
             };
 
             const recipients = [
@@ -99,7 +99,7 @@ export class ResetController {
             await client.send({
                 from: sender,
                 to: recipients,
-                subject: "Movie Catalog - Redefinição de Senha",
+                subject: "Kreato - Redefinição de Senha",
                 text: `Clique no link a seguir para redefinir sua senha: ${resetLink}`,
             });
 

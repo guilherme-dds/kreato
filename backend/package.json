@@ -1,7 +1,7 @@
 {
-  "name": "movie-catalog",
+  "name": "kreato-backend",
   "version": "1.0.0",
-  "description": "",
+  "description": "Kreato core API (workspaces, ideas, content pipeline, metrics)",
   "main": "index.js",
   "scripts": {
     "dev": "npx tsx src/server.ts",

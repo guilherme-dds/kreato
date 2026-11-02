@@ -1,7 +1,7 @@
 {
-  "name": "auth-service",
+  "name": "kreato-auth-service",
   "version": "1.0.0",
-  "description": "Auth Microservice for Movie Catalog",
+  "description": "Auth Microservice for Kreato",
   "main": "src/server.ts",
   "type": "module",
   "scripts": {

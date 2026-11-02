@@ -393,7 +393,7 @@ const MainCatalog: React.FC<MainCatalogProps> = ({ showToast }) => {
       {/* Footer */}
       <footer className="app-footer">
         <p>
-          <Film size={16} /> CineHanks • Desenvolvido por Guilherme Dias
+          <Film size={16} /> Kreato • Desenvolvido por Guilherme Dias
         </p>
       </footer>
 

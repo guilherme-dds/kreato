@@ -1,7 +1,7 @@
 services:
   minio:
     image: elestio/minio:latest
-    container_name: cinehanks-minio
+    container_name: kreato-minio
     command: server /data --console-address ":9001"
     expose:
       - "9000"
@@ -17,14 +17,14 @@ services:
 
   redis:
     image: redis:7-alpine
-    container_name: cinehanks-redis
+    container_name: kreato-redis
     restart: unless-stopped
 
   log-service:
     build:
       context: ./log-service
       dockerfile: Dockerfile
-    container_name: cinehanks-log-service
+    container_name: kreato-log-service
     expose:
       - "3335"
     environment:
@@ -41,7 +41,7 @@ services:
     build:
       context: ./nginx
       dockerfile: Dockerfile
-    container_name: cinehanks-nginx
+    container_name: kreato-nginx
     ports:
       - "8209:80"
     depends_on:
@@ -55,7 +55,7 @@ services:
     build:
       context: ./auth-service
       dockerfile: Dockerfile
-    container_name: cinehanks-auth-service
+    container_name: kreato-auth-service
     expose:
       - "3334"
     environment:
@@ -83,7 +83,7 @@ services:
     build:
       context: ./backend
       dockerfile: Dockerfile
-    container_name: cinehanks-backend
+    container_name: kreato-backend
     expose:
       - "3333"
     environment:
@@ -120,7 +120,7 @@ services:
     build:
       context: ./frontend
       dockerfile: Dockerfile
-    container_name: cinehanks-frontend
+    container_name: kreato-frontend
     expose:
       - "5173"
     environment:

@@ -1,10 +1,10 @@
 export const logSwaggerDocument = {
   openapi: "3.0.3",
   info: {
-    title: "CineHanks - Log Service API",
+    title: "Kreato - Log Service API",
     version: "1.0.0",
     description:
-      "Documentação completa do Microserviço de Logs & Auditoria (Log Service) da plataforma CineHanks. Consome eventos de auditoria em tempo real via Redis Streams (XREAD / XADD) e fornece histórico de ações de usuários para administradores.",
+      "Documentação completa do Microserviço de Logs & Auditoria (Log Service) da plataforma Kreato. Consome eventos de auditoria em tempo real via Redis Streams (XREAD / XADD) e fornece histórico de ações de usuários para administradores.",
     contact: {
       name: "Guilherme Santos",
       email: "guilherme.dds.dev@gmail.com",

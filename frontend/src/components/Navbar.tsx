@@ -51,8 +51,8 @@ export const Navbar: React.FC<NavbarProps> = ({
             <Sparkles className="logo-sparkle" size={14} />
           </div>
           <div className="brand-text">
-            <span className="brand-title">CineHanks</span>
-            <span className="brand-subtitle">Catálogo Tom Hanks</span>
+            <span className="brand-title">Kreato</span>
+            <span className="brand-subtitle">Central do Criador</span>
           </div>
         </div>
 

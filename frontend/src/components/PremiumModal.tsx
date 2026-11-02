@@ -80,7 +80,7 @@ export const PremiumModal: React.FC<PremiumModalProps> = ({ isOpen, onClose, sho
           <div className="premium-icon-wrapper">
             <Crown size={38} className="crown-glow" />
           </div>
-          <h2>Plano CineHanks <span className="gold-text">PREMIUM</span></h2>
+          <h2>Plano Kreato <span className="gold-text">PREMIUM</span></h2>
           <p>Desbloqueie todo o potencial da plataforma sem nenhuma limitação!</p>
         </div>
 

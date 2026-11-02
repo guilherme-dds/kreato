@@ -1,9 +1,9 @@
 export const authSwaggerDocument = {
   openapi: "3.0.3",
   info: {
-    title: "CineHanks - Auth Service API",
+    title: "Kreato - Auth Service API",
     version: "1.0.0",
-    description: "Documentação completa do Microserviço de Autenticação (Auth Service) da plataforma CineHanks. Responsável pelo cadastro de usuários, autenticação JWT, gestão de sessões (Refresh Tokens), encerramento de sessão (Logout), verificação de tokens e fluxo seguro de redefinição de senha por e-mail (Brevo/Mailtrap).",
+    description: "Documentação completa do Microserviço de Autenticação (Auth Service) da plataforma Kreato. Responsável pelo cadastro de usuários, autenticação JWT, gestão de sessões (Refresh Tokens), encerramento de sessão (Logout), verificação de tokens e fluxo seguro de redefinição de senha por e-mail (Brevo/Mailtrap).",
     contact: {
       name: "Guilherme Santos",
       email: "guilherme.dds.dev@gmail.com"

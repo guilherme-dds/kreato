@@ -1,7 +1,7 @@
 {
-  "name": "log-service",
+  "name": "kreato-log-service",
   "version": "1.0.0",
-  "description": "Log Microservice using Redis Streams for CineHanks",
+  "description": "Log Microservice using Redis Streams for Kreato",
   "main": "src/server.ts",
   "type": "module",
   "scripts": {

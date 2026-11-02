@@ -34,7 +34,7 @@ export const AuthPage: React.FC<AuthPageProps> = ({ showToast }) => {
           throw new Error("Por favor, informe seu nome.");
         }
         await register(nome, email, password);
-        showToast("success", "Conta criada com sucesso! Bem-vindo ao CineHanks.");
+        showToast("success", "Conta criada com sucesso! Bem-vindo ao Kreato.");
       } else {
         await login(email, password);
         showToast("success", "Login realizado com sucesso!");
@@ -71,7 +71,7 @@ export const AuthPage: React.FC<AuthPageProps> = ({ showToast }) => {
                   ? "Recuperar Senha"
                   : isRegister
                     ? "Criar sua Conta"
-                    : "Entrar no CineHanks"}
+                    : "Entrar no Kreato"}
               </h2>
               <p className="auth-subtitle">
                 {isForgotPassword

@@ -78,7 +78,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, showToast
               ? "Recuperar Senha"
               : isRegister
               ? "Criar sua Conta"
-              : "Entrar no CineHanks"}
+              : "Entrar no Kreato"}
           </h2>
           <p className="auth-subtitle">
             {isForgotPassword
