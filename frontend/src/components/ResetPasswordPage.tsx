@@ -1,5 +1,6 @@
 import React, { useState } from "react";
-import { Lock, Eye, EyeOff, Film, CheckCircle, ArrowLeft } from "lucide-react";
+import { Lock, Eye, EyeOff, CheckCircle, ArrowLeft } from "lucide-react";
+import { KreatoLogo } from "./KreatoLogo";
 import { confirmPasswordResetApi } from "../api/backend";
 
 interface ResetPasswordPageProps {
@@ -65,7 +66,7 @@ export const ResetPasswordPage: React.FC<ResetPasswordPageProps> = ({
           <div className="modal-card auth-page-card">
             <div className="auth-header">
               <div className="auth-logo-badge">
-                <Film size={28} />
+                <KreatoLogo size={56} />
               </div>
               <h2>Redefinição de Senha</h2>
               <p className="auth-subtitle">

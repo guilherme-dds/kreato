@@ -1,6 +1,7 @@
 import React, { useState } from "react";
-import { Mail, Lock, User as UserIcon, Eye, EyeOff, Film, LogIn, UserPlus } from "lucide-react";
+import { Mail, Lock, User as UserIcon, Eye, EyeOff, LogIn, UserPlus } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
+import { KreatoLogo } from "./KreatoLogo";
 import { requestPasswordResetApi } from "../api/backend";
 
 interface AuthPageProps {
@@ -64,7 +65,7 @@ export const AuthPage: React.FC<AuthPageProps> = ({ showToast }) => {
           <div className="modal-card auth-page-card">
             <div className="auth-header">
               <div className="auth-logo-badge">
-                <Film size={28} />
+                <KreatoLogo size={56} />
               </div>
               <h2>
                 {isForgotPassword

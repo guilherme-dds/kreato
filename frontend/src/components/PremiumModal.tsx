@@ -97,7 +97,7 @@ export const PremiumModal: React.FC<PremiumModalProps> = ({ isOpen, onClose, sho
           </div>
 
           <div className="premium-feature-card">
-            <div className="feature-icon red">
+            <div className="feature-icon primary">
               <Lightbulb size={22} />
             </div>
             <div>
@@ -154,7 +154,7 @@ export const PremiumModal: React.FC<PremiumModalProps> = ({ isOpen, onClose, sho
                 className="btn btn-secondary-mock"
                 onClick={handleCancelSubscription}
                 disabled={loadingStripe || loadingMock || loadingCancel}
-                style={{ borderColor: "rgba(229, 9, 20, 0.4)", color: "#ff6b6b" }}
+                style={{ borderColor: "rgba(239, 68, 68, 0.4)", color: "#ff6b6b" }}
               >
                 <X size={16} />
                 {loadingCancel ? "Cancelando..." : "Cancelar Assinatura (Voltar ao Gratuito)"}

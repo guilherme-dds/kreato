@@ -4,7 +4,6 @@ import {
   Edit3,
   Check,
   X,
-  ArrowLeft,
   Loader2,
   Camera,
   Trash2,
@@ -12,6 +11,7 @@ import {
   Sparkles,
 } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
+import { useLayoutContext } from "../layouts/layoutContext";
 import { PremiumBadge } from "./PremiumBadge";
 import { PLAN_LABELS, getUserPlan, isPaidPlan } from "../utils/plans";
 import {
@@ -21,17 +21,8 @@ import {
   removeUserAvatarApi,
 } from "../api/backend";
 
-interface ProfilePageProps {
-  onBackToHome: () => void;
-  showToast?: (type: "success" | "error" | "info", text: string) => void;
-  openPremiumModal?: () => void;
-}
-
-export const ProfilePage: React.FC<ProfilePageProps> = ({
-  onBackToHome,
-  showToast,
-  openPremiumModal,
-}) => {
+export const ProfilePage: React.FC = () => {
+  const { showToast, openPlansModal: openPremiumModal } = useLayoutContext();
   const { user, token, updateUser } = useAuth();
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -79,10 +70,10 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({
       setTempBio(newBio);
       updateUser({ bio: newBio });
       setIsEditingBio(false);
-      showToast?.("success", "Bio atualizada com sucesso no banco de dados!");
+      showToast("success", "Bio atualizada com sucesso no banco de dados!");
     } catch (err: any) {
       console.error("Erro ao salvar bio:", err);
-      showToast?.("error", err.message || "Erro ao salvar bio no banco de dados.");
+      showToast("error", err.message || "Erro ao salvar bio no banco de dados.");
     } finally {
       setIsSavingBio(false);
     }
@@ -109,7 +100,7 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({
     const isImage =
       allowedMimeTypes.includes(file.type.toLowerCase()) || file.type.startsWith("image/");
     if (!isImage) {
-      showToast?.(
+      showToast(
         "error",
         "Formato de arquivo inválido! Por favor envie um arquivo de imagem (JPG, PNG, WEBP, GIF)."
       );
@@ -119,7 +110,7 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({
     const MAX_SIZE_BYTES = 5 * 1024 * 1024;
     if (file.size > MAX_SIZE_BYTES) {
       const sizeInMb = (file.size / (1024 * 1024)).toFixed(1);
-      showToast?.(
+      showToast(
         "error",
         `A imagem selecionada é muito grande (${sizeInMb}MB)! O tamanho máximo permitido é 5MB.`
       );
@@ -127,7 +118,7 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({
     }
 
     if (!token) {
-      showToast?.("error", "Você precisa estar autenticado para enviar uma foto de perfil.");
+      showToast("error", "Você precisa estar autenticado para enviar uma foto de perfil.");
       return;
     }
 
@@ -135,10 +126,10 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({
     try {
       const updatedUser = await uploadUserAvatarApi(file, token);
       updateUser({ fotoPerfil: updatedUser.fotoPerfil });
-      showToast?.("success", "Foto de perfil salva com sucesso!");
+      showToast("success", "Foto de perfil salva com sucesso!");
     } catch (err: any) {
       console.error("Erro no upload da foto de perfil:", err);
-      showToast?.("error", err.message || "Erro ao fazer upload da foto de perfil.");
+      showToast("error", err.message || "Erro ao fazer upload da foto de perfil.");
     } finally {
       setIsUploadingAvatar(false);
     }
@@ -150,10 +141,10 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({
     try {
       await removeUserAvatarApi(token);
       updateUser({ fotoPerfil: null });
-      showToast?.("success", "Foto de perfil removida com sucesso!");
+      showToast("success", "Foto de perfil removida com sucesso!");
     } catch (err: any) {
       console.error("Erro ao remover foto de perfil:", err);
-      showToast?.("error", err.message || "Erro ao remover foto de perfil.");
+      showToast("error", err.message || "Erro ao remover foto de perfil.");
     } finally {
       setIsRemovingAvatar(false);
     }
@@ -173,12 +164,6 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({
         accept="image/jpeg,image/png,image/webp,image/gif"
         style={{ display: "none" }}
       />
-
-      {/* Return Navigation */}
-      <button className="back-catalog-btn" onClick={onBackToHome}>
-        <ArrowLeft size={18} />
-        <span>Voltar ao Início</span>
-      </button>
 
       {/* Profile Header */}
       <div className="profile-card">

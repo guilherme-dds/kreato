@@ -16,3 +16,7 @@ export function getUserPlan(user?: Pick<User, "plano"> | null): Plan {
 export function isPaidPlan(user?: Pick<User, "plano"> | null): boolean {
   return getUserPlan(user) !== "FREE";
 }
+
+export function hasPlanAtLeast(user: Pick<User, "plano"> | null | undefined, minimum: Plan): boolean {
+  return PLANS.indexOf(getUserPlan(user)) >= PLANS.indexOf(minimum);
+}

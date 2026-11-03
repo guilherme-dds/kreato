@@ -89,7 +89,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     };
   }, [logout]);
 
-  // Restauração inicial de sessão com verificação proativa do JWT
+  // Restauração inicial de sessão com verificação proativa do JWT.
+  // Roda apenas na montagem: depender de `logout` (recriado a cada mudança de user/token)
+  // fazia o efeito reexecutar e chamar setUser em loop infinito.
   useEffect(() => {
     const storedToken = localStorage.getItem("auth_token");
     const storedRefreshToken = localStorage.getItem("auth_refresh_token");
@@ -132,7 +134,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
     }
     setIsLoading(false);
-  }, [logout]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // Monitoramento periódico da validade do JWT para logout/refresh automático
   useEffect(() => {

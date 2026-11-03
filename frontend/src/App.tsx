@@ -1,193 +1,114 @@
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useCallback } from "react";
+import { BrowserRouter, Navigate, Route, Routes, useLocation, useNavigate, type Location } from "react-router-dom";
+import { RefreshCw, Crown } from "lucide-react";
 import { AuthProvider, useAuth } from "./context/AuthContext";
-import { getUserProfileApi, verifyStripeSessionApi } from "./api/backend";
-import { PLAN_LABELS, getUserPlan } from "./utils/plans";
 
-import { Navbar } from "./components/Navbar";
-import { PremiumModal } from "./components/PremiumModal";
+import { AppLayout } from "./layouts/AppLayout";
+import { useLayoutContext, type ShowToast } from "./layouts/layoutContext";
 import { AuthPage } from "./components/AuthPage";
 import { ResetPasswordPage } from "./components/ResetPasswordPage";
 import { Toast, type ToastMessage } from "./components/Toast";
 import { ProfilePage } from "./components/ProfilePage";
+import { DashboardPage } from "./pages/DashboardPage";
+import { ComingSoonPage } from "./pages/ComingSoonPage";
+import { MAIN_NAV } from "./navigation";
 
-import { Sparkles, Lightbulb, KanbanSquare, BarChart3, RefreshCw } from "lucide-react";
+const FullScreenLoader: React.FC = () => (
+  <div className="catalog-loading" style={{ minHeight: "100vh" }}>
+    <RefreshCw className="spinning-icon" size={36} />
+    <span>Verificando autenticação...</span>
+  </div>
+);
 
-interface MainAppProps {
-  showToast: (type: "success" | "error" | "info", text: string) => void;
-}
+/** Rotas internas: exige login e preserva o destino (incluindo ?stripe_status) para depois do login */
+const RequireAuth: React.FC<{ children: React.ReactElement }> = ({ children }) => {
+  const { isAuthenticated, isLoading } = useAuth();
+  const location = useLocation();
 
-const MainApp: React.FC<MainAppProps> = ({ showToast }) => {
-  const { user, token, updateUser } = useAuth();
+  if (isLoading) return <FullScreenLoader />;
+  if (!isAuthenticated) return <Navigate to="/login" replace state={{ from: location }} />;
+  return children;
+};
 
-  const [currentView, setCurrentView] = useState<"home" | "profile">("home");
-  const [isPremiumModalOpen, setIsPremiumModalOpen] = useState(false);
+/** Tela de login: quem já está autenticado volta para onde estava indo */
+const PublicOnly: React.FC<{ children: React.ReactElement }> = ({ children }) => {
+  const { isAuthenticated, isLoading } = useAuth();
+  const location = useLocation();
+  const from = (location.state as { from?: Location } | null)?.from;
 
-  // Check URL parameters for Stripe Checkout status
-  useEffect(() => {
-    const query = new URLSearchParams(window.location.search);
-    const stripeStatus = query.get("stripe_status");
+  if (isLoading) return <FullScreenLoader />;
+  if (isAuthenticated) return <Navigate to={from ? `${from.pathname}${from.search}` : "/"} replace />;
+  return children;
+};
 
-    if (stripeStatus === "success" || stripeStatus === "success_mock") {
-      const sessionId = query.get("session_id");
-      if (token) {
-        verifyStripeSessionApi(token, sessionId)
-          .then((data) => {
-            if (data.user) {
-              updateUser(data.user);
-              showToast("success", `🎉 Parabéns! Sua assinatura do plano ${PLAN_LABELS[getUserPlan(data.user)]} foi ativada com sucesso!`);
-            }
-          })
-          .catch((err) => {
-            console.error("Erro ao verificar sessão do Stripe:", err);
-            getUserProfileApi(token).then((u) => {
-              updateUser(u);
-            }).catch(() => {});
-          });
-      } else {
-        showToast("success", "🎉 Parabéns! Sua assinatura foi ativada!");
-      }
-      window.history.replaceState({}, document.title, window.location.pathname);
-    } else if (stripeStatus === "cancel") {
-      showToast("info", "Fluxo de pagamento com o Stripe cancelado. Você continua no Plano Gratuito.");
-      if (token) {
-        getUserProfileApi(token).then((u) => {
-          updateUser(u);
-        }).catch(() => {});
-      }
-      window.history.replaceState({}, document.title, window.location.pathname);
-    } else if (stripeStatus === "manage_mock") {
-      showToast("info", "Você já possui uma assinatura ativa.");
-      window.history.replaceState({}, document.title, window.location.pathname);
-    }
-  }, [token, updateUser, showToast]);
+const PlansPlaceholder: React.FC = () => {
+  const { openPlansModal } = useLayoutContext();
+  return (
+    <ComingSoonPage
+      icon={Crown}
+      title="Planos"
+      description="Compare os planos Gratuito, Kreato Creator e Kreato Studio."
+    >
+      <button className="btn btn-primary" onClick={openPlansModal}>
+        Ver plano Kreato Creator
+      </button>
+    </ComingSoonPage>
+  );
+};
 
-  const userName = user?.nome || (user?.email ? user.email.split("@")[0] : "Criador");
+const AppRoutes: React.FC<{ showToast: ShowToast }> = ({ showToast }) => {
+  const navigate = useNavigate();
+  const modulePages = MAIN_NAV.filter((item) => item.path !== "/");
 
   return (
-    <div className="app-container">
-      <Navbar
-        openPremiumModal={() => setIsPremiumModalOpen(true)}
-        onProfileClick={() => setCurrentView("profile")}
-        onBrandClick={() => setCurrentView("home")}
-        currentView={currentView}
+    <Routes>
+      <Route
+        path="/reset-password"
+        element={<ResetPasswordPage showToast={showToast} onGoToLogin={() => navigate("/login")} />}
+      />
+      <Route
+        path="/login"
+        element={
+          <PublicOnly>
+            <AuthPage showToast={showToast} />
+          </PublicOnly>
+        }
       />
 
-      <main className="main-content">
-        {currentView === "profile" ? (
-          <ProfilePage
-            onBackToHome={() => setCurrentView("home")}
-            showToast={showToast}
-            openPremiumModal={() => setIsPremiumModalOpen(true)}
+      <Route
+        element={
+          <RequireAuth>
+            <AppLayout showToast={showToast} />
+          </RequireAuth>
+        }
+      >
+        <Route index element={<DashboardPage />} />
+        {modulePages.map((item) => (
+          <Route
+            key={item.path}
+            path={item.path.slice(1)}
+            element={<ComingSoonPage icon={item.icon} title={item.label} description={item.description} />}
           />
-        ) : (
-          <>
-            {/* Temporary home screen until the content modules are implemented */}
-            <div className="section-header-row">
-              <h2 className="section-title">
-                <Sparkles size={24} style={{ color: "#f5c518" }} />
-                <span>Olá, {userName}! Bem-vindo ao Kreato</span>
-              </h2>
-            </div>
+        ))}
+        <Route path="planos" element={<PlansPlaceholder />} />
+        <Route path="perfil" element={<ProfilePage />} />
+      </Route>
 
-            <div className="premium-features-grid">
-              <div className="premium-feature-card">
-                <div className="feature-icon gold">
-                  <Lightbulb size={22} />
-                </div>
-                <div>
-                  <h4>Central de Ideias e Roteiros</h4>
-                  <p>Registre temas, ganchos e legendas em um só lugar. Em breve.</p>
-                </div>
-              </div>
-
-              <div className="premium-feature-card">
-                <div className="feature-icon red">
-                  <KanbanSquare size={22} />
-                </div>
-                <div>
-                  <h4>Pipeline e Calendário Editorial</h4>
-                  <p>Acompanhe cada conteúdo da ideia à publicação. Em breve.</p>
-                </div>
-              </div>
-
-              <div className="premium-feature-card">
-                <div className="feature-icon blue">
-                  <BarChart3 size={22} />
-                </div>
-                <div>
-                  <h4>Acompanhamento de Resultados</h4>
-                  <p>Registre métricas e compare o desempenho dos conteúdos. Em breve.</p>
-                </div>
-              </div>
-            </div>
-          </>
-        )}
-      </main>
-
-      {/* Footer */}
-      <footer className="app-footer">
-        <p>
-          <Sparkles size={16} /> Kreato • Desenvolvido por Guilherme Dias
-        </p>
-      </footer>
-
-      {/* Premium Subscription Modal */}
-      <PremiumModal
-        isOpen={isPremiumModalOpen}
-        onClose={() => setIsPremiumModalOpen(false)}
-        showToast={showToast}
-      />
-    </div>
+      <Route path="*" element={<Navigate to="/" replace />} />
+    </Routes>
   );
 };
 
 const AppContent: React.FC = () => {
-  const { isAuthenticated, isLoading } = useAuth();
   const [toast, setToast] = useState<ToastMessage | null>(null);
 
-  const showToast = useCallback((type: "success" | "error" | "info", text: string) => {
+  const showToast = useCallback<ShowToast>((type, text) => {
     setToast({ id: Date.now().toString(), type, text });
   }, []);
 
-  const isResetRoute =
-    window.location.pathname.includes("reset-password") ||
-    window.location.search.includes("token=");
-
-  if (isResetRoute) {
-    return (
-      <>
-        <ResetPasswordPage
-          showToast={showToast}
-          onGoToLogin={() => {
-            window.location.href = "/";
-          }}
-        />
-        <Toast toast={toast} onClose={() => setToast(null)} />
-      </>
-    );
-  }
-
-  if (isLoading) {
-    return (
-      <div className="catalog-loading" style={{ minHeight: "100vh" }}>
-        <RefreshCw className="spinning-icon" size={36} />
-        <span>Verificando autenticação...</span>
-      </div>
-    );
-  }
-
-  if (!isAuthenticated) {
-    return (
-      <>
-        <AuthPage showToast={showToast} />
-        <Toast toast={toast} onClose={() => setToast(null)} />
-      </>
-    );
-  }
-
   return (
     <>
-      <MainApp showToast={showToast} />
+      <AppRoutes showToast={showToast} />
       <Toast toast={toast} onClose={() => setToast(null)} />
     </>
   );
@@ -195,9 +116,11 @@ const AppContent: React.FC = () => {
 
 export function App() {
   return (
-    <AuthProvider>
-      <AppContent />
-    </AuthProvider>
+    <BrowserRouter>
+      <AuthProvider>
+        <AppContent />
+      </AuthProvider>
+    </BrowserRouter>
   );
 }
 
