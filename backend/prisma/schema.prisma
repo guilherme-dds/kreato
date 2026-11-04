@@ -24,6 +24,7 @@ model Usuario {
   resetTokens    ResetToken[]
   workspacesDono Workspace[]       @relation("WorkspaceDono")
   participacoes  MembroWorkspace[]
+  ideias         Ideia[]
 }
 
 model RefreshToken {
@@ -56,6 +57,7 @@ model Workspace {
 
   dono    Usuario           @relation("WorkspaceDono", fields: [donoId], references: [id], onDelete: Cascade)
   membros MembroWorkspace[]
+  ideias  Ideia[]
 
   @@index([donoId])
 }
@@ -72,4 +74,26 @@ model MembroWorkspace {
 
   @@unique([workspaceId, usuarioId])
   @@index([usuarioId])
+}
+
+model Ideia {
+  id           Int      @id @default(autoincrement())
+  workspaceId  String   @db.VarChar(36)
+  autorId      String?  @db.VarChar(36)
+  titulo       String   @db.VarChar(150)
+  gancho       String?  @db.Text
+  descricao    String?  @db.Text
+  legenda      String?  @db.Text
+  plataforma   String?  @db.VarChar(20)
+  // Lista de strings normalizadas (minúsculas, sem duplicatas)
+  tags         Json?
+  status       String   @default("NOVA") @db.VarChar(30)
+  criadoEm     DateTime @default(now())
+  atualizadoEm DateTime @updatedAt
+
+  workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  autor     Usuario?  @relation(fields: [autorId], references: [id], onDelete: SetNull)
+
+  @@index([workspaceId, status])
+  @@index([autorId])
 }

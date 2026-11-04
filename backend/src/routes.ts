@@ -3,6 +3,7 @@ import multer from "multer";
 import { UserController } from "./controller/UserController.js";
 import { StripeController } from "./controller/StripeController.js";
 import { WorkspaceController } from "./controller/WorkspaceController.js";
+import { IdeaController } from "./controller/IdeaController.js";
 import { AuthMiddleware } from "./middlewares/auth.js";
 import { WorkspaceMiddleware, requireWorkspaceRole } from "./middlewares/workspace.js";
 
@@ -16,6 +17,7 @@ const upload = multer({
 const usercontroller = new UserController();
 const stripeController = new StripeController();
 const workspaceController = new WorkspaceController();
+const ideaController = new IdeaController();
 
 export const router = Router();
 
@@ -70,6 +72,22 @@ router.patch(
   requireWorkspaceRole("DONO", "GESTOR"),
   (req, res) => workspaceController.updateCurrent(req, res)
 );
+
+// Ideas Routes (scoped to the current workspace)
+router.get("/ideias", AuthMiddleware, WorkspaceMiddleware, (req, res) => ideaController.index(req, res));
+router.get("/api/ideias", AuthMiddleware, WorkspaceMiddleware, (req, res) => ideaController.index(req, res));
+
+router.get("/ideias/:id", AuthMiddleware, WorkspaceMiddleware, (req, res) => ideaController.show(req, res));
+router.get("/api/ideias/:id", AuthMiddleware, WorkspaceMiddleware, (req, res) => ideaController.show(req, res));
+
+router.post("/ideias", AuthMiddleware, WorkspaceMiddleware, (req, res) => ideaController.create(req, res));
+router.post("/api/ideias", AuthMiddleware, WorkspaceMiddleware, (req, res) => ideaController.create(req, res));
+
+router.patch("/ideias/:id", AuthMiddleware, WorkspaceMiddleware, (req, res) => ideaController.update(req, res));
+router.patch("/api/ideias/:id", AuthMiddleware, WorkspaceMiddleware, (req, res) => ideaController.update(req, res));
+
+router.delete("/ideias/:id", AuthMiddleware, WorkspaceMiddleware, (req, res) => ideaController.delete(req, res));
+router.delete("/api/ideias/:id", AuthMiddleware, WorkspaceMiddleware, (req, res) => ideaController.delete(req, res));
 
 // Stripe Routes
 router.post("/stripe/create-checkout-session", AuthMiddleware, (req, res) => stripeController.createCheckoutSession(req, res));
