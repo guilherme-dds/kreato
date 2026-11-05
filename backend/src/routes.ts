@@ -4,6 +4,7 @@ import { UserController } from "./controller/UserController.js";
 import { StripeController } from "./controller/StripeController.js";
 import { WorkspaceController } from "./controller/WorkspaceController.js";
 import { IdeaController } from "./controller/IdeaController.js";
+import { ContentController } from "./controller/ContentController.js";
 import { AuthMiddleware } from "./middlewares/auth.js";
 import { WorkspaceMiddleware, requireWorkspaceRole } from "./middlewares/workspace.js";
 
@@ -18,6 +19,7 @@ const usercontroller = new UserController();
 const stripeController = new StripeController();
 const workspaceController = new WorkspaceController();
 const ideaController = new IdeaController();
+const contentController = new ContentController();
 
 export const router = Router();
 
@@ -88,6 +90,28 @@ router.patch("/api/ideias/:id", AuthMiddleware, WorkspaceMiddleware, (req, res) 
 
 router.delete("/ideias/:id", AuthMiddleware, WorkspaceMiddleware, (req, res) => ideaController.delete(req, res));
 router.delete("/api/ideias/:id", AuthMiddleware, WorkspaceMiddleware, (req, res) => ideaController.delete(req, res));
+
+router.post("/ideias/:id/converter", AuthMiddleware, WorkspaceMiddleware, (req, res) => contentController.convertIdea(req, res));
+router.post("/api/ideias/:id/converter", AuthMiddleware, WorkspaceMiddleware, (req, res) => contentController.convertIdea(req, res));
+
+// Content Pipeline Routes (scoped to the current workspace)
+router.get("/conteudos", AuthMiddleware, WorkspaceMiddleware, (req, res) => contentController.index(req, res));
+router.get("/api/conteudos", AuthMiddleware, WorkspaceMiddleware, (req, res) => contentController.index(req, res));
+
+router.get("/conteudos/:id", AuthMiddleware, WorkspaceMiddleware, (req, res) => contentController.show(req, res));
+router.get("/api/conteudos/:id", AuthMiddleware, WorkspaceMiddleware, (req, res) => contentController.show(req, res));
+
+router.post("/conteudos", AuthMiddleware, WorkspaceMiddleware, (req, res) => contentController.create(req, res));
+router.post("/api/conteudos", AuthMiddleware, WorkspaceMiddleware, (req, res) => contentController.create(req, res));
+
+router.patch("/conteudos/:id/etapa", AuthMiddleware, WorkspaceMiddleware, (req, res) => contentController.updateStage(req, res));
+router.patch("/api/conteudos/:id/etapa", AuthMiddleware, WorkspaceMiddleware, (req, res) => contentController.updateStage(req, res));
+
+router.patch("/conteudos/:id", AuthMiddleware, WorkspaceMiddleware, (req, res) => contentController.update(req, res));
+router.patch("/api/conteudos/:id", AuthMiddleware, WorkspaceMiddleware, (req, res) => contentController.update(req, res));
+
+router.delete("/conteudos/:id", AuthMiddleware, WorkspaceMiddleware, (req, res) => contentController.delete(req, res));
+router.delete("/api/conteudos/:id", AuthMiddleware, WorkspaceMiddleware, (req, res) => contentController.delete(req, res));
 
 // Stripe Routes
 router.post("/stripe/create-checkout-session", AuthMiddleware, (req, res) => stripeController.createCheckoutSession(req, res));

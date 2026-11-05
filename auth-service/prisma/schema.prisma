@@ -25,6 +25,7 @@ model Usuario {
   workspacesDono Workspace[]       @relation("WorkspaceDono")
   participacoes  MembroWorkspace[]
   ideias         Ideia[]
+  conteudos      Conteudo[]
 }
 
 model RefreshToken {
@@ -55,9 +56,10 @@ model Workspace {
   pessoalDoUsuarioId String?  @unique @db.VarChar(36)
   criadoEm           DateTime @default(now())
 
-  dono    Usuario           @relation("WorkspaceDono", fields: [donoId], references: [id], onDelete: Cascade)
-  membros MembroWorkspace[]
-  ideias  Ideia[]
+  dono      Usuario           @relation("WorkspaceDono", fields: [donoId], references: [id], onDelete: Cascade)
+  membros   MembroWorkspace[]
+  ideias    Ideia[]
+  conteudos Conteudo[]
 
   @@index([donoId])
 }
@@ -93,7 +95,39 @@ model Ideia {
 
   workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
   autor     Usuario?  @relation(fields: [autorId], references: [id], onDelete: SetNull)
+  conteudo  Conteudo?
 
   @@index([workspaceId, status])
+  @@index([autorId])
+}
+
+model Conteudo {
+  id             Int       @id @default(autoincrement())
+  workspaceId    String    @db.VarChar(36)
+  autorId        String?   @db.VarChar(36)
+  // Ideia de origem: cada ideia pode ser convertida em no máximo um conteúdo
+  ideiaId        Int?      @unique
+  titulo         String    @db.VarChar(150)
+  // IDEIA → ROTEIRO → GRAVACAO → EDICAO → AGENDADO → PUBLICADO
+  etapa          String    @default("IDEIA") @db.VarChar(20)
+  // Ordem do card dentro da coluna (etapa) do kanban
+  posicao        Int       @default(0)
+  roteiro        String?   @db.Text
+  legenda        String?   @db.Text
+  // Lista de hashtags normalizadas, sem "#"
+  hashtags       Json?
+  plataforma     String?   @db.VarChar(20)
+  formato        String?   @db.VarChar(20)
+  dataPublicacao DateTime?
+  urlPublicacao  String?   @db.VarChar(500)
+  criadoEm       DateTime  @default(now())
+  atualizadoEm   DateTime  @updatedAt
+
+  workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  autor     Usuario?  @relation(fields: [autorId], references: [id], onDelete: SetNull)
+  ideia     Ideia?    @relation(fields: [ideiaId], references: [id], onDelete: SetNull)
+
+  @@index([workspaceId, etapa, posicao])
+  @@index([workspaceId, dataPublicacao])
   @@index([autorId])
 }

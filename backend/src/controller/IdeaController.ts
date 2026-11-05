@@ -2,7 +2,8 @@ import type { Request, Response } from "express";
 import type { Prisma } from "../generated/prisma/client.js";
 import prisma from "../utils/prisma.js";
 import { logEvent } from "../utils/logger.js";
-import { getPlanLimits, isWithinLimit } from "../utils/plans.js";
+import { getPlanLimits, isWithinLimit, rejectPlanLimit } from "../utils/plans.js";
+import { parsePositiveInt, queryString } from "../utils/request.js";
 import { canManageWorkspace } from "../utils/workspaces.js";
 import {
   IDEA_STATUSES,
@@ -48,15 +49,6 @@ interface IdeaInput {
 
 function serializeIdea(idea: IdeaRecord) {
   return { ...idea, tags: readTags(idea.tags) };
-}
-
-function queryString(value: unknown): string | null {
-  return typeof value === "string" && value.trim().length > 0 ? value.trim() : null;
-}
-
-function parseIdeaId(value: unknown): number | null {
-  const id = Number(value);
-  return Number.isInteger(id) && id > 0 ? id : null;
 }
 
 /**
@@ -110,13 +102,15 @@ function countActiveIdeas(workspaceId: string) {
   return prisma.ideia.count({ where: { workspaceId, status: { not: "ARQUIVADA" } } });
 }
 
-function limitReachedResponse(res: Response, limit: number) {
-  return res.status(403).json({
-    error: `Você atingiu o limite de ${limit} ideias ativas do seu plano. Arquive ideias antigas ou faça upgrade.`,
-    code: "PLAN_LIMIT_REACHED",
-    resource: "ideias",
-    limit,
-  });
+function rejectIdeaLimit(req: Request, res: Response, usage: number) {
+  const limit = getPlanLimits(req.workspacePlan).ideias;
+  return rejectPlanLimit(
+    req,
+    res,
+    "ideias",
+    usage,
+    `Você atingiu o limite de ${limit} ideias ativas do seu plano. Arquive ideias antigas ou faça upgrade.`,
+  );
 }
 
 export class IdeaController {
@@ -165,7 +159,7 @@ export class IdeaController {
 
   async show(req: Request, res: Response) {
     try {
-      const id = parseIdeaId(req.params.id);
+      const id = parsePositiveInt(req.params.id);
       if (!id) return res.status(400).json({ error: "ID de ideia inválido." });
 
       const ideia = await prisma.ideia.findFirst({
@@ -193,14 +187,7 @@ export class IdeaController {
       if (finalStatus !== "ARQUIVADA") {
         const activeIdeas = await countActiveIdeas(req.workspaceId);
         if (!isWithinLimit(req.workspacePlan, "ideias", activeIdeas)) {
-          await logEvent({
-            userId: req.userId,
-            acao: "PLAN_LIMIT_REACHED",
-            req,
-            entidade: "ideia",
-            detalhes: { recurso: "ideias", uso: activeIdeas, plano: req.workspacePlan },
-          });
-          return limitReachedResponse(res, getPlanLimits(req.workspacePlan).ideias);
+          return rejectIdeaLimit(req, res, activeIdeas);
         }
       }
 
@@ -234,7 +221,7 @@ export class IdeaController {
 
   async update(req: Request, res: Response) {
     try {
-      const id = parseIdeaId(req.params.id);
+      const id = parsePositiveInt(req.params.id);
       if (!id) return res.status(400).json({ error: "ID de ideia inválido." });
 
       const existing = await prisma.ideia.findFirst({
@@ -256,7 +243,7 @@ export class IdeaController {
       if (isUnarchiving) {
         const activeIdeas = await countActiveIdeas(req.workspaceId);
         if (!isWithinLimit(req.workspacePlan, "ideias", activeIdeas)) {
-          return limitReachedResponse(res, getPlanLimits(req.workspacePlan).ideias);
+          return rejectIdeaLimit(req, res, activeIdeas);
         }
       }
 
@@ -290,7 +277,7 @@ export class IdeaController {
    */
   async delete(req: Request, res: Response) {
     try {
-      const id = parseIdeaId(req.params.id);
+      const id = parsePositiveInt(req.params.id);
       if (!id) return res.status(400).json({ error: "ID de ideia inválido." });
 
       const existing = await prisma.ideia.findFirst({

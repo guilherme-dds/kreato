@@ -70,6 +70,27 @@ export function isWithinLimit(plan: unknown, resource: keyof PlanLimits, current
 }
 
 /**
+ * Registra o evento PLAN_LIMIT_REACHED e responde 403 com o código que o frontend usa
+ * para oferecer upgrade. O limite é sempre o do plano do dono do workspace.
+ */
+export async function rejectPlanLimit(
+  req: Request,
+  res: Response,
+  resource: keyof PlanLimits,
+  usage: number,
+  message: string,
+) {
+  const limit = getPlanLimits(req.workspacePlan)[resource];
+  await logEvent({
+    userId: req.userId,
+    acao: "PLAN_LIMIT_REACHED",
+    req,
+    detalhes: { recurso: resource, uso: usage, limite: limit, plano: req.workspacePlan },
+  });
+  return res.status(403).json({ error: message, code: "PLAN_LIMIT_REACHED", resource, limit });
+}
+
+/**
  * Restringe a rota a usuários com o plano mínimo informado.
  * O plano é lido do banco a cada requisição para refletir upgrades/cancelamentos imediatamente.
  */
