@@ -12,6 +12,9 @@ import type {
   ContentInput,
   ContentMoveInput,
   ContentsResponse,
+  Attachment,
+  AttachmentsResponse,
+  StorageUsage,
 } from "../types";
 
 /** Erro retornado pela API, com o status HTTP e o código de negócio (ex.: PLAN_LIMIT_REACHED) */
@@ -147,12 +150,11 @@ export function isJwtExpired(tokenString?: string | null): boolean {
   }
 }
 
-async function fetchWithAuth<T>(
-  path: string,
-  options: RequestInit = {},
-  token?: string | null,
-  defaultErrorMessage = "Erro na requisição com o servidor"
-): Promise<T> {
+/**
+ * Requisição autenticada que devolve a Response crua (útil para downloads em blob).
+ * Renova o token antes de enviar se ele já expirou, e repete uma vez após um 401.
+ */
+async function authorizedFetch(path: string, options: RequestInit = {}, token?: string | null): Promise<Response> {
   let activeToken = token || localStorage.getItem("auth_token");
 
   // Se o token estiver expirado antes da requisição, tenta renovar antes de enviar
@@ -176,8 +178,9 @@ async function fetchWithAuth<T>(
     }
   }
 
+  // Em uploads (FormData) o navegador define o Content-Type com o boundary do multipart
   const headers: Record<string, string> = {
-    "Content-Type": "application/json",
+    ...(options.body instanceof FormData ? {} : { "Content-Type": "application/json" }),
     ...(options.headers as Record<string, string> || {}),
   };
 
@@ -220,6 +223,16 @@ async function fetchWithAuth<T>(
     window.dispatchEvent(new Event("auth:unauthorized"));
   }
 
+  return response;
+}
+
+async function fetchWithAuth<T>(
+  path: string,
+  options: RequestInit = {},
+  token?: string | null,
+  defaultErrorMessage = "Erro na requisição com o servidor"
+): Promise<T> {
+  const response = await authorizedFetch(path, options, token);
   return parseResponse<T>(response, defaultErrorMessage);
 }
 
@@ -424,4 +437,38 @@ export async function moveContentApi(id: number, input: ContentMoveInput, token?
 
 export async function deleteContentApi(id: number, token?: string | null): Promise<void> {
   await fetchWithAuth<void>(`/conteudos/${id}`, { method: "DELETE" }, token, "Erro ao excluir conteúdo");
+}
+
+/* ==========================================================================
+   CONTENT ATTACHMENTS API
+   ========================================================================== */
+
+export async function getAttachmentsApi(contentId: number, token?: string | null): Promise<AttachmentsResponse> {
+  return fetchWithAuth<AttachmentsResponse>(`/conteudos/${contentId}/anexos`, {}, token, "Erro ao carregar anexos");
+}
+
+export async function uploadAttachmentApi(
+  contentId: number,
+  file: File,
+  token?: string | null
+): Promise<{ anexo: Attachment; uso: StorageUsage }> {
+  const formData = new FormData();
+  formData.append("arquivo", file);
+  return fetchWithAuth<{ anexo: Attachment; uso: StorageUsage }>(
+    `/conteudos/${contentId}/anexos`,
+    { method: "POST", body: formData },
+    token,
+    "Erro ao enviar anexo"
+  );
+}
+
+/** Baixa o arquivo com autenticação (o MinIO não é exposto ao navegador) */
+export async function downloadAttachmentBlob(attachmentId: number, token?: string | null): Promise<Blob> {
+  const response = await authorizedFetch(`/anexos/${attachmentId}/arquivo`, {}, token);
+  if (!response.ok) await parseResponse<never>(response, "Erro ao baixar anexo");
+  return response.blob();
+}
+
+export async function deleteAttachmentApi(attachmentId: number, token?: string | null): Promise<void> {
+  await fetchWithAuth<void>(`/anexos/${attachmentId}`, { method: "DELETE" }, token, "Erro ao excluir anexo");
 }

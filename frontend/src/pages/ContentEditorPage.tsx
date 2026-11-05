@@ -3,6 +3,7 @@ import { Link, useNavigate, useParams } from "react-router-dom";
 import { ArrowLeft, Check, ExternalLink, Lightbulb, RefreshCw, Save, SquareKanban, Trash2, Wand2 } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
 import { useLayoutContext } from "../layouts/layoutContext";
+import { AttachmentsPanel } from "../components/pipeline/AttachmentsPanel";
 import { deleteContentApi, getContentApi, isPlanLimitError, moveContentApi, updateContentApi } from "../api/backend";
 import type { ContentDetail, ContentFormat, ContentStage, Platform } from "../types";
 import {
@@ -409,6 +410,8 @@ export const ContentEditorPage: React.FC = () => {
               />
             </div>
           </div>
+
+          <AttachmentsPanel contentId={content.id} />
 
           <div className="editor-panel editor-meta">
             {content.ideia && (

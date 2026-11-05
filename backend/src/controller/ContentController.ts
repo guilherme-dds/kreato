@@ -5,6 +5,7 @@ import { logEvent } from "../utils/logger.js";
 import { getPlanLimits, isWithinLimit, rejectPlanLimit } from "../utils/plans.js";
 import { canManageWorkspace } from "../utils/workspaces.js";
 import { parsePositiveInt, queryString } from "../utils/request.js";
+import { deleteAssets } from "../utils/minio.js";
 import {
   CONTENT_FORMATS,
   CONTENT_STAGES,
@@ -473,7 +474,10 @@ export class ContentController {
         return res.status(403).json({ error: "Apenas o autor ou um gestor pode excluir este conteúdo." });
       }
 
+      // Os registros de anexo caem em cascata; os arquivos no MinIO precisam ser removidos à parte
+      const anexos = await prisma.anexo.findMany({ where: { conteudoId: id }, select: { chave: true } });
       await prisma.conteudo.delete({ where: { id } });
+      await deleteAssets(anexos.map((anexo) => anexo.chave));
 
       await logEvent({
         userId: req.userId,

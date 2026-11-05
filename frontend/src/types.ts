@@ -130,3 +130,23 @@ export interface ContentsResponse {
   uso: { conteudosAtivos: number; limite: number | null };
 }
 
+export interface Attachment {
+  id: number;
+  conteudoId: number;
+  nomeOriginal: string;
+  tipoMime: string;
+  tamanhoBytes: number;
+  criadoEm: string;
+  autor: { id: string; nome: string } | null;
+}
+
+export interface StorageUsage {
+  usadoBytes: number;
+  limiteBytes: number;
+}
+
+export interface AttachmentsResponse {
+  anexos: Attachment[];
+  uso: StorageUsage;
+}
+

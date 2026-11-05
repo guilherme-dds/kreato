@@ -26,6 +26,7 @@ model Usuario {
   participacoes  MembroWorkspace[]
   ideias         Ideia[]
   conteudos      Conteudo[]
+  anexos         Anexo[]
 }
 
 model RefreshToken {
@@ -60,6 +61,7 @@ model Workspace {
   membros   MembroWorkspace[]
   ideias    Ideia[]
   conteudos Conteudo[]
+  anexos    Anexo[]
 
   @@index([donoId])
 }
@@ -126,8 +128,31 @@ model Conteudo {
   workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
   autor     Usuario?  @relation(fields: [autorId], references: [id], onDelete: SetNull)
   ideia     Ideia?    @relation(fields: [ideiaId], references: [id], onDelete: SetNull)
+  anexos    Anexo[]
 
   @@index([workspaceId, etapa, posicao])
   @@index([workspaceId, dataPublicacao])
+  @@index([autorId])
+}
+
+model Anexo {
+  id           Int      @id @default(autoincrement())
+  conteudoId   Int
+  // Redundante com o conteúdo, mas permite somar o armazenamento usado pelo workspace sem join
+  workspaceId  String   @db.VarChar(36)
+  autorId      String?  @db.VarChar(36)
+  nomeOriginal String   @db.VarChar(255)
+  // Chave do objeto no bucket de assets do MinIO
+  chave        String   @unique @db.VarChar(255)
+  tipoMime     String   @db.VarChar(150)
+  tamanhoBytes Int
+  criadoEm     DateTime @default(now())
+
+  conteudo  Conteudo  @relation(fields: [conteudoId], references: [id], onDelete: Cascade)
+  workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  autor     Usuario?  @relation(fields: [autorId], references: [id], onDelete: SetNull)
+
+  @@index([conteudoId])
+  @@index([workspaceId])
   @@index([autorId])
 }

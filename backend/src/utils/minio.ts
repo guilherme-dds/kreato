@@ -113,3 +113,29 @@ function getExtFromMime(mime: string): string {
       return ".jpg";
   }
 }
+
+/* ==========================================================================
+   ASSETS (anexos dos conteúdos)
+   ========================================================================== */
+
+export const ASSETS_BUCKET = process.env.MINIO_ASSETS_BUCKET || "assets";
+
+/** Envia um arquivo já salvo em disco (upload temporário do multer) para o bucket de assets */
+export async function uploadAssetFromFile(key: string, filePath: string, mimeType: string): Promise<void> {
+  await ensureBucketExists(ASSETS_BUCKET);
+  await minioClient.fPutObject(ASSETS_BUCKET, key, filePath, { "Content-Type": mimeType });
+}
+
+export async function getAssetStream(key: string) {
+  return minioClient.getObject(ASSETS_BUCKET, key);
+}
+
+/** Remove objetos do bucket de assets; falhas são apenas registradas (o banco é a fonte da verdade) */
+export async function deleteAssets(keys: string[]): Promise<void> {
+  if (keys.length === 0) return;
+  try {
+    await minioClient.removeObjects(ASSETS_BUCKET, keys);
+  } catch (err) {
+    console.error(`Erro ao remover ${keys.length} anexo(s) do MinIO:`, err);
+  }
+}

@@ -5,6 +5,7 @@ import { StripeController } from "./controller/StripeController.js";
 import { WorkspaceController } from "./controller/WorkspaceController.js";
 import { IdeaController } from "./controller/IdeaController.js";
 import { ContentController } from "./controller/ContentController.js";
+import { AttachmentController, attachmentUpload } from "./controller/AttachmentController.js";
 import { AuthMiddleware } from "./middlewares/auth.js";
 import { WorkspaceMiddleware, requireWorkspaceRole } from "./middlewares/workspace.js";
 
@@ -20,6 +21,7 @@ const stripeController = new StripeController();
 const workspaceController = new WorkspaceController();
 const ideaController = new IdeaController();
 const contentController = new ContentController();
+const attachmentController = new AttachmentController();
 
 export const router = Router();
 
@@ -112,6 +114,19 @@ router.patch("/api/conteudos/:id", AuthMiddleware, WorkspaceMiddleware, (req, re
 
 router.delete("/conteudos/:id", AuthMiddleware, WorkspaceMiddleware, (req, res) => contentController.delete(req, res));
 router.delete("/api/conteudos/:id", AuthMiddleware, WorkspaceMiddleware, (req, res) => contentController.delete(req, res));
+
+// Content Attachments Routes (MinIO "assets" bucket)
+router.get("/conteudos/:id/anexos", AuthMiddleware, WorkspaceMiddleware, (req, res) => attachmentController.index(req, res));
+router.get("/api/conteudos/:id/anexos", AuthMiddleware, WorkspaceMiddleware, (req, res) => attachmentController.index(req, res));
+
+router.post("/conteudos/:id/anexos", AuthMiddleware, WorkspaceMiddleware, attachmentUpload, (req, res) => attachmentController.create(req, res));
+router.post("/api/conteudos/:id/anexos", AuthMiddleware, WorkspaceMiddleware, attachmentUpload, (req, res) => attachmentController.create(req, res));
+
+router.get("/anexos/:id/arquivo", AuthMiddleware, WorkspaceMiddleware, (req, res) => attachmentController.download(req, res));
+router.get("/api/anexos/:id/arquivo", AuthMiddleware, WorkspaceMiddleware, (req, res) => attachmentController.download(req, res));
+
+router.delete("/anexos/:id", AuthMiddleware, WorkspaceMiddleware, (req, res) => attachmentController.delete(req, res));
+router.delete("/api/anexos/:id", AuthMiddleware, WorkspaceMiddleware, (req, res) => attachmentController.delete(req, res));
 
 // Stripe Routes
 router.post("/stripe/create-checkout-session", AuthMiddleware, (req, res) => stripeController.createCheckoutSession(req, res));
