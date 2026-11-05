@@ -14,6 +14,7 @@ import { ComingSoonPage } from "./pages/ComingSoonPage";
 import { IdeasPage } from "./pages/IdeasPage";
 import { PipelinePage } from "./pages/PipelinePage";
 import { ContentEditorPage } from "./pages/ContentEditorPage";
+import { CalendarPage } from "./pages/CalendarPage";
 import { MAIN_NAV } from "./navigation";
 
 const FullScreenLoader: React.FC = () => (
@@ -62,7 +63,7 @@ const PlansPlaceholder: React.FC = () => {
 const AppRoutes: React.FC<{ showToast: ShowToast }> = ({ showToast }) => {
   const navigate = useNavigate();
   // Módulos já implementados têm rota própria; os demais exibem "em breve"
-  const implementedPaths = ["/", "/ideias", "/pipeline"];
+  const implementedPaths = ["/", "/ideias", "/pipeline", "/calendario"];
   const modulePages = MAIN_NAV.filter((item) => !implementedPaths.includes(item.path));
 
   return (
@@ -91,6 +92,7 @@ const AppRoutes: React.FC<{ showToast: ShowToast }> = ({ showToast }) => {
         <Route path="ideias" element={<IdeasPage />} />
         <Route path="pipeline" element={<PipelinePage />} />
         <Route path="pipeline/:id" element={<ContentEditorPage />} />
+        <Route path="calendario" element={<CalendarPage />} />
         {modulePages.map((item) => (
           <Route
             key={item.path}
