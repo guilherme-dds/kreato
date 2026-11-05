@@ -1,4 +1,29 @@
-import type { User, AuthResponse, RefreshTokenResponse } from "../types";
+import type {
+  User,
+  AuthResponse,
+  RefreshTokenResponse,
+  Idea,
+  IdeaFilters,
+  IdeaInput,
+  IdeasResponse,
+} from "../types";
+
+/** Erro retornado pela API, com o status HTTP e o código de negócio (ex.: PLAN_LIMIT_REACHED) */
+export class ApiError extends Error {
+  status: number;
+  code: string | undefined;
+
+  constructor(message: string, status: number, code?: string) {
+    super(message);
+    this.name = "ApiError";
+    this.status = status;
+    this.code = code;
+  }
+}
+
+export function isPlanLimitError(error: unknown): boolean {
+  return error instanceof ApiError && (error.code === "PLAN_LIMIT_REACHED" || error.code === "PLAN_REQUIRED");
+}
 
 export function getApiBaseUrl(): string {
   const envUrl = import.meta.env.VITE_API_BASE_URL as string;
@@ -20,7 +45,7 @@ async function parseResponse<T>(response: Response, defaultErrorMessage: string)
   }
 
   if (!response.ok) {
-    throw new Error(data.error || data.message || defaultErrorMessage);
+    throw new ApiError(data.error || data.message || defaultErrorMessage, response.status, data.code);
   }
 
   return data as T;
@@ -286,4 +311,41 @@ export async function cancelStripeSubscriptionApi(token?: string | null): Promis
     token,
     "Erro ao cancelar assinatura do Stripe"
   );
+}
+
+/* ==========================================================================
+   IDEAS API (workspace atual)
+   ========================================================================== */
+
+export async function getIdeasApi(filters: IdeaFilters = {}, token?: string | null): Promise<IdeasResponse> {
+  const params = new URLSearchParams();
+  Object.entries(filters).forEach(([key, value]) => {
+    if (value) params.set(key, value);
+  });
+  const query = params.toString();
+  return fetchWithAuth<IdeasResponse>(`/ideias${query ? `?${query}` : ""}`, {}, token, "Erro ao carregar ideias");
+}
+
+export async function createIdeaApi(input: IdeaInput, token?: string | null): Promise<Idea> {
+  const data = await fetchWithAuth<{ ideia: Idea }>(
+    "/ideias",
+    { method: "POST", body: JSON.stringify(input) },
+    token,
+    "Erro ao criar ideia"
+  );
+  return data.ideia;
+}
+
+export async function updateIdeaApi(id: number, input: Partial<IdeaInput>, token?: string | null): Promise<Idea> {
+  const data = await fetchWithAuth<{ ideia: Idea }>(
+    `/ideias/${id}`,
+    { method: "PATCH", body: JSON.stringify(input) },
+    token,
+    "Erro ao atualizar ideia"
+  );
+  return data.ideia;
+}
+
+export async function deleteIdeaApi(id: number, token?: string | null): Promise<void> {
+  await fetchWithAuth<void>(`/ideias/${id}`, { method: "DELETE" }, token, "Erro ao excluir ideia");
 }

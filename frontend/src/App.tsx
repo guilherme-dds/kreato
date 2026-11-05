@@ -11,6 +11,7 @@ import { Toast, type ToastMessage } from "./components/Toast";
 import { ProfilePage } from "./components/ProfilePage";
 import { DashboardPage } from "./pages/DashboardPage";
 import { ComingSoonPage } from "./pages/ComingSoonPage";
+import { IdeasPage } from "./pages/IdeasPage";
 import { MAIN_NAV } from "./navigation";
 
 const FullScreenLoader: React.FC = () => (
@@ -58,7 +59,8 @@ const PlansPlaceholder: React.FC = () => {
 
 const AppRoutes: React.FC<{ showToast: ShowToast }> = ({ showToast }) => {
   const navigate = useNavigate();
-  const modulePages = MAIN_NAV.filter((item) => item.path !== "/");
+  // Módulos já implementados têm rota própria; os demais exibem "em breve"
+  const modulePages = MAIN_NAV.filter((item) => item.path !== "/" && item.path !== "/ideias");
 
   return (
     <Routes>
@@ -83,6 +85,7 @@ const AppRoutes: React.FC<{ showToast: ShowToast }> = ({ showToast }) => {
         }
       >
         <Route index element={<DashboardPage />} />
+        <Route path="ideias" element={<IdeasPage />} />
         {modulePages.map((item) => (
           <Route
             key={item.path}
