@@ -6,18 +6,27 @@ import type {
   IdeaFilters,
   IdeaInput,
   IdeasResponse,
+  ContentCreateInput,
+  ContentDetail,
+  ContentFilters,
+  ContentInput,
+  ContentMoveInput,
+  ContentsResponse,
 } from "../types";
 
 /** Erro retornado pela API, com o status HTTP e o código de negócio (ex.: PLAN_LIMIT_REACHED) */
 export class ApiError extends Error {
   status: number;
   code: string | undefined;
+  /** Corpo completo da resposta de erro (ex.: { conteudoId } em IDEA_ALREADY_CONVERTED) */
+  data: Record<string, unknown>;
 
-  constructor(message: string, status: number, code?: string) {
+  constructor(message: string, status: number, code?: string, data: Record<string, unknown> = {}) {
     super(message);
     this.name = "ApiError";
     this.status = status;
     this.code = code;
+    this.data = data;
   }
 }
 
@@ -45,7 +54,7 @@ async function parseResponse<T>(response: Response, defaultErrorMessage: string)
   }
 
   if (!response.ok) {
-    throw new ApiError(data.error || data.message || defaultErrorMessage, response.status, data.code);
+    throw new ApiError(data.error || data.message || defaultErrorMessage, response.status, data.code, data);
   }
 
   return data as T;
@@ -317,13 +326,18 @@ export async function cancelStripeSubscriptionApi(token?: string | null): Promis
    IDEAS API (workspace atual)
    ========================================================================== */
 
-export async function getIdeasApi(filters: IdeaFilters = {}, token?: string | null): Promise<IdeasResponse> {
+/** Monta a query string ignorando filtros vazios */
+function toQueryString(filters: object): string {
   const params = new URLSearchParams();
   Object.entries(filters).forEach(([key, value]) => {
-    if (value) params.set(key, value);
+    if (typeof value === "string" && value) params.set(key, value);
   });
   const query = params.toString();
-  return fetchWithAuth<IdeasResponse>(`/ideias${query ? `?${query}` : ""}`, {}, token, "Erro ao carregar ideias");
+  return query ? `?${query}` : "";
+}
+
+export async function getIdeasApi(filters: IdeaFilters = {}, token?: string | null): Promise<IdeasResponse> {
+  return fetchWithAuth<IdeasResponse>(`/ideias${toQueryString(filters)}`, {}, token, "Erro ao carregar ideias");
 }
 
 export async function createIdeaApi(input: IdeaInput, token?: string | null): Promise<Idea> {
@@ -348,4 +362,66 @@ export async function updateIdeaApi(id: number, input: Partial<IdeaInput>, token
 
 export async function deleteIdeaApi(id: number, token?: string | null): Promise<void> {
   await fetchWithAuth<void>(`/ideias/${id}`, { method: "DELETE" }, token, "Erro ao excluir ideia");
+}
+
+/** Leva uma ideia para o pipeline (409 IDEA_ALREADY_CONVERTED se já foi convertida) */
+export async function convertIdeaApi(ideaId: number, token?: string | null): Promise<ContentDetail> {
+  const data = await fetchWithAuth<{ conteudo: ContentDetail }>(
+    `/ideias/${ideaId}/converter`,
+    { method: "POST", body: JSON.stringify({}) },
+    token,
+    "Erro ao levar ideia para o pipeline"
+  );
+  return data.conteudo;
+}
+
+/* ==========================================================================
+   CONTENT PIPELINE API (workspace atual)
+   ========================================================================== */
+
+export async function getContentsApi(filters: ContentFilters = {}, token?: string | null): Promise<ContentsResponse> {
+  return fetchWithAuth<ContentsResponse>(`/conteudos${toQueryString(filters)}`, {}, token, "Erro ao carregar conteúdos");
+}
+
+export async function getContentApi(id: number, token?: string | null): Promise<ContentDetail> {
+  const data = await fetchWithAuth<{ conteudo: ContentDetail }>(`/conteudos/${id}`, {}, token, "Erro ao carregar conteúdo");
+  return data.conteudo;
+}
+
+export async function createContentApi(input: ContentCreateInput, token?: string | null): Promise<ContentDetail> {
+  const data = await fetchWithAuth<{ conteudo: ContentDetail }>(
+    "/conteudos",
+    { method: "POST", body: JSON.stringify(input) },
+    token,
+    "Erro ao criar conteúdo"
+  );
+  return data.conteudo;
+}
+
+export async function updateContentApi(
+  id: number,
+  input: Partial<ContentInput>,
+  token?: string | null
+): Promise<ContentDetail> {
+  const data = await fetchWithAuth<{ conteudo: ContentDetail }>(
+    `/conteudos/${id}`,
+    { method: "PATCH", body: JSON.stringify(input) },
+    token,
+    "Erro ao salvar conteúdo"
+  );
+  return data.conteudo;
+}
+
+export async function moveContentApi(id: number, input: ContentMoveInput, token?: string | null): Promise<ContentDetail> {
+  const data = await fetchWithAuth<{ conteudo: ContentDetail }>(
+    `/conteudos/${id}/etapa`,
+    { method: "PATCH", body: JSON.stringify(input) },
+    token,
+    "Erro ao mover conteúdo"
+  );
+  return data.conteudo;
+}
+
+export async function deleteContentApi(id: number, token?: string | null): Promise<void> {
+  await fetchWithAuth<void>(`/conteudos/${id}`, { method: "DELETE" }, token, "Erro ao excluir conteúdo");
 }

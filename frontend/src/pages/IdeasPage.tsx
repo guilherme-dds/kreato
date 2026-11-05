@@ -1,22 +1,31 @@
 import React, { useCallback, useEffect, useRef, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import {
   Archive,
   ArchiveRestore,
-  Crown,
   Hash,
   Lightbulb,
   Pencil,
   Plus,
   RefreshCw,
   Search,
+  SquareKanban,
   Trash2,
   X,
 } from "lucide-react";
 import { PageHeader } from "../components/PageHeader";
+import { UsageBar } from "../components/UsageBar";
 import { IdeaFormModal } from "../components/ideas/IdeaFormModal";
 import { useAuth } from "../context/AuthContext";
 import { useLayoutContext } from "../layouts/layoutContext";
-import { deleteIdeaApi, getIdeasApi, isPlanLimitError, updateIdeaApi } from "../api/backend";
+import {
+  ApiError,
+  convertIdeaApi,
+  deleteIdeaApi,
+  getIdeasApi,
+  isPlanLimitError,
+  updateIdeaApi,
+} from "../api/backend";
 import type { Idea, IdeaStatus, IdeasResponse, Platform } from "../types";
 import { IDEA_STATUS_LABELS, PLATFORMS, PLATFORM_LABELS, formatRelativeDate } from "../utils/content";
 
@@ -34,6 +43,7 @@ const SEARCH_DEBOUNCE_MS = 350;
 export const IdeasPage: React.FC = () => {
   const { token, user } = useAuth();
   const { showToast, openPlansModal } = useLayoutContext();
+  const navigate = useNavigate();
 
   const [status, setStatus] = useState<StatusTab>("");
   const [plataforma, setPlataforma] = useState<Platform | "">("");
@@ -93,6 +103,27 @@ export const IdeasPage: React.FC = () => {
     loadIdeas();
   };
 
+  /** Leva a ideia para o pipeline e abre o editor de roteiro do novo conteúdo */
+  const handleConvert = async (idea: Idea) => {
+    setBusyId(idea.id);
+    try {
+      const conteudo = await convertIdeaApi(idea.id, token);
+      showToast("success", `"${idea.titulo}" entrou no pipeline na etapa Roteiro.`);
+      navigate(`/pipeline/${conteudo.id}`);
+    } catch (err) {
+      if (err instanceof ApiError && err.code === "IDEA_ALREADY_CONVERTED") {
+        const conteudoId = err.data.conteudoId;
+        showToast("info", "Esta ideia já está no pipeline.");
+        navigate(typeof conteudoId === "number" ? `/pipeline/${conteudoId}` : "/pipeline");
+        return;
+      }
+      showToast("error", err instanceof Error ? err.message : "Erro ao levar ideia para o pipeline");
+      if (isPlanLimitError(err)) openPlansModal();
+    } finally {
+      setBusyId(null);
+    }
+  };
+
   const toggleArchive = async (idea: Idea) => {
     const archiving = idea.status !== "ARQUIVADA";
     setBusyId(idea.id);
@@ -130,8 +161,6 @@ export const IdeasPage: React.FC = () => {
   };
 
   const uso = data?.uso;
-  const usagePercent = uso?.limite ? Math.min(100, Math.round((uso.ideiasAtivas / uso.limite) * 100)) : 0;
-  const usageLevel = usagePercent >= 100 ? "is-full" : usagePercent >= 80 ? "is-warning" : "";
   const hasFilters = Boolean(plataforma || tag || busca);
   const ideias = data?.ideias ?? [];
 
@@ -149,19 +178,13 @@ export const IdeasPage: React.FC = () => {
       />
 
       {uso && uso.limite !== null && (
-        <div className={`usage-bar ${usageLevel}`}>
-          <div className="usage-bar-info">
-            <span>
-              <strong>{uso.ideiasAtivas}</strong> de {uso.limite} ideias ativas no plano Gratuito
-            </span>
-            <button className="usage-bar-upgrade" onClick={openPlansModal}>
-              <Crown size={14} /> Ideias ilimitadas no Creator
-            </button>
-          </div>
-          <div className="usage-bar-track">
-            <div className="usage-bar-fill" style={{ width: `${usagePercent}%` }} />
-          </div>
-        </div>
+        <UsageBar
+          used={uso.ideiasAtivas}
+          limit={uso.limite}
+          label="ideias ativas no plano Gratuito"
+          upgradeLabel="Ideias ilimitadas no Creator"
+          onUpgrade={openPlansModal}
+        />
       )}
 
       <div className="ideas-toolbar">
@@ -304,6 +327,16 @@ export const IdeasPage: React.FC = () => {
                     {formatRelativeDate(idea.atualizadoEm)}
                   </span>
                   <div className="idea-card-actions">
+                    {idea.status !== "ARQUIVADA" && (
+                      <button
+                        className="idea-action"
+                        onClick={() => handleConvert(idea)}
+                        title="Levar para o pipeline"
+                        disabled={isBusy}
+                      >
+                        <SquareKanban size={15} />
+                      </button>
+                    )}
                     <button className="idea-action" onClick={() => openEdit(idea)} title="Editar" disabled={isBusy}>
                       <Pencil size={15} />
                     </button>
