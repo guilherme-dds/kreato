@@ -4,6 +4,7 @@ import { ArrowLeft, Check, ExternalLink, Lightbulb, RefreshCw, Save, SquareKanba
 import { useAuth } from "../context/AuthContext";
 import { useLayoutContext } from "../layouts/layoutContext";
 import { AttachmentsPanel } from "../components/pipeline/AttachmentsPanel";
+import { MetricsPanel } from "../components/pipeline/MetricsPanel";
 import { deleteContentApi, getContentApi, isPlanLimitError, moveContentApi, updateContentApi } from "../api/backend";
 import type { ContentDetail, ContentFormat, ContentStage, Platform } from "../types";
 import {
@@ -312,6 +313,8 @@ export const ContentEditorPage: React.FC = () => {
               aria-label="Roteiro"
             />
           </div>
+
+          <MetricsPanel contentId={content.id} stage={content.etapa} />
         </section>
 
         <aside className="editor-sidebar">

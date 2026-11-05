@@ -15,6 +15,11 @@ import type {
   Attachment,
   AttachmentsResponse,
   StorageUsage,
+  ContentMetricsResponse,
+  MetricInput,
+  MetricSnapshot,
+  MetricsSummary,
+  MetricsSummaryFilters,
 } from "../types";
 
 /** Erro retornado pela API, com o status HTTP e o código de negócio (ex.: PLAN_LIMIT_REACHED) */
@@ -471,4 +476,33 @@ export async function downloadAttachmentBlob(attachmentId: number, token?: strin
 
 export async function deleteAttachmentApi(attachmentId: number, token?: string | null): Promise<void> {
   await fetchWithAuth<void>(`/anexos/${attachmentId}`, { method: "DELETE" }, token, "Erro ao excluir anexo");
+}
+
+/* ==========================================================================
+   CONTENT METRICS API
+   ========================================================================== */
+
+export async function getMetricsSummaryApi(
+  filters: MetricsSummaryFilters = {},
+  token?: string | null
+): Promise<MetricsSummary> {
+  return fetchWithAuth<MetricsSummary>(`/metricas/resumo${toQueryString(filters)}`, {}, token, "Erro ao carregar métricas");
+}
+
+export async function getContentMetricsApi(contentId: number, token?: string | null): Promise<ContentMetricsResponse> {
+  return fetchWithAuth<ContentMetricsResponse>(`/conteudos/${contentId}/metricas`, {}, token, "Erro ao carregar métricas");
+}
+
+export async function createMetricApi(contentId: number, input: MetricInput, token?: string | null): Promise<MetricSnapshot> {
+  const data = await fetchWithAuth<{ metrica: MetricSnapshot }>(
+    `/conteudos/${contentId}/metricas`,
+    { method: "POST", body: JSON.stringify(input) },
+    token,
+    "Erro ao registrar métricas"
+  );
+  return data.metrica;
+}
+
+export async function deleteMetricApi(metricId: number, token?: string | null): Promise<void> {
+  await fetchWithAuth<void>(`/metricas/${metricId}`, { method: "DELETE" }, token, "Erro ao excluir métrica");
 }

@@ -150,3 +150,68 @@ export interface AttachmentsResponse {
   uso: StorageUsage;
 }
 
+export interface MetricValues {
+  visualizacoes: number;
+  curtidas: number;
+  comentarios: number;
+  compartilhamentos: number;
+  salvamentos: number;
+  alcance: number | null;
+  seguidoresGanhos: number | null;
+}
+
+export interface MetricSnapshot extends MetricValues {
+  id: number;
+  coletadoEm: string;
+  criadoEm: string;
+  taxaEngajamento: number | null;
+  registradoPor: { id: string; nome: string } | null;
+}
+
+export interface MetricInput extends Partial<MetricValues> {
+  coletadoEm?: string;
+}
+
+export interface ContentMetricsResponse {
+  metricas: MetricSnapshot[];
+  ultima: MetricSnapshot | null;
+  historico: { dias: number | null; ocultas: number };
+}
+
+export interface MetricTotals {
+  conteudosPublicados: number;
+  conteudosComMetricas: number;
+  visualizacoes: number;
+  curtidas: number;
+  comentarios: number;
+  compartilhamentos: number;
+  salvamentos: number;
+  seguidoresGanhos: number;
+  taxaEngajamento: number | null;
+}
+
+export interface MetricsSummaryContent {
+  id: number;
+  titulo: string;
+  plataforma: Platform | null;
+  formato: ContentFormat | null;
+  dataPublicacao: string | null;
+  urlPublicacao: string | null;
+  metrica: MetricSnapshot | null;
+  taxaEngajamento: number | null;
+}
+
+export interface MetricsSummary {
+  periodo: { de: string; ate: string; limitadoPeloPlano: boolean; historicoDias: number | null };
+  totais: MetricTotals;
+  porPlataforma: (MetricTotals & { plataforma: Platform | "SEM_PLATAFORMA" })[];
+  porFormato: (MetricTotals & { formato: ContentFormat | "SEM_FORMATO" })[];
+  conteudos: MetricsSummaryContent[];
+}
+
+export interface MetricsSummaryFilters {
+  de?: string;
+  ate?: string;
+  plataforma?: Platform | "";
+}
+

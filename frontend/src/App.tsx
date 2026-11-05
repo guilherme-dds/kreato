@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from "react";
+import React, { Suspense, lazy, useState, useCallback } from "react";
 import { BrowserRouter, Navigate, Route, Routes, useLocation, useNavigate, type Location } from "react-router-dom";
 import { RefreshCw, Crown } from "lucide-react";
 import { AuthProvider, useAuth } from "./context/AuthContext";
@@ -13,9 +13,23 @@ import { DashboardPage } from "./pages/DashboardPage";
 import { ComingSoonPage } from "./pages/ComingSoonPage";
 import { IdeasPage } from "./pages/IdeasPage";
 import { PipelinePage } from "./pages/PipelinePage";
-import { ContentEditorPage } from "./pages/ContentEditorPage";
 import { CalendarPage } from "./pages/CalendarPage";
 import { MAIN_NAV } from "./navigation";
+
+// Páginas com gráficos (recharts) carregam sob demanda para não pesar o bundle inicial
+const ContentEditorPage = lazy(() =>
+  import("./pages/ContentEditorPage").then((module) => ({ default: module.ContentEditorPage }))
+);
+const AnalyticsPage = lazy(() => import("./pages/AnalyticsPage").then((module) => ({ default: module.AnalyticsPage })));
+
+const PageLoader: React.FC = () => (
+  <div className="catalog-loading">
+    <RefreshCw className="spinning-icon" size={28} />
+    <span>Carregando...</span>
+  </div>
+);
+
+const withSuspense = (element: React.ReactElement) => <Suspense fallback={<PageLoader />}>{element}</Suspense>;
 
 const FullScreenLoader: React.FC = () => (
   <div className="catalog-loading" style={{ minHeight: "100vh" }}>
@@ -63,7 +77,7 @@ const PlansPlaceholder: React.FC = () => {
 const AppRoutes: React.FC<{ showToast: ShowToast }> = ({ showToast }) => {
   const navigate = useNavigate();
   // Módulos já implementados têm rota própria; os demais exibem "em breve"
-  const implementedPaths = ["/", "/ideias", "/pipeline", "/calendario"];
+  const implementedPaths = ["/", "/ideias", "/pipeline", "/calendario", "/metricas"];
   const modulePages = MAIN_NAV.filter((item) => !implementedPaths.includes(item.path));
 
   return (
@@ -91,8 +105,9 @@ const AppRoutes: React.FC<{ showToast: ShowToast }> = ({ showToast }) => {
         <Route index element={<DashboardPage />} />
         <Route path="ideias" element={<IdeasPage />} />
         <Route path="pipeline" element={<PipelinePage />} />
-        <Route path="pipeline/:id" element={<ContentEditorPage />} />
+        <Route path="pipeline/:id" element={withSuspense(<ContentEditorPage />)} />
         <Route path="calendario" element={<CalendarPage />} />
+        <Route path="metricas" element={withSuspense(<AnalyticsPage />)} />
         {modulePages.map((item) => (
           <Route
             key={item.path}
