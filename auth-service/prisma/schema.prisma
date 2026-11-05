@@ -27,6 +27,7 @@ model Usuario {
   ideias         Ideia[]
   conteudos      Conteudo[]
   anexos         Anexo[]
+  metricas       Metrica[]
 }
 
 model RefreshToken {
@@ -62,6 +63,7 @@ model Workspace {
   ideias    Ideia[]
   conteudos Conteudo[]
   anexos    Anexo[]
+  metricas  Metrica[]
 
   @@index([donoId])
 }
@@ -129,6 +131,7 @@ model Conteudo {
   autor     Usuario?  @relation(fields: [autorId], references: [id], onDelete: SetNull)
   ideia     Ideia?    @relation(fields: [ideiaId], references: [id], onDelete: SetNull)
   anexos    Anexo[]
+  metricas  Metrica[]
 
   @@index([workspaceId, etapa, posicao])
   @@index([workspaceId, dataPublicacao])
@@ -155,4 +158,30 @@ model Anexo {
   @@index([conteudoId])
   @@index([workspaceId])
   @@index([autorId])
+}
+
+// Foto dos números de um conteúdo publicado em um momento (registro manual por enquanto)
+model Metrica {
+  id                Int      @id @default(autoincrement())
+  conteudoId        Int
+  workspaceId       String   @db.VarChar(36)
+  registradoPorId   String?  @db.VarChar(36)
+  // Quando os números foram observados na plataforma
+  coletadoEm        DateTime @default(now())
+  visualizacoes     Int      @default(0)
+  curtidas          Int      @default(0)
+  comentarios       Int      @default(0)
+  compartilhamentos Int      @default(0)
+  salvamentos       Int      @default(0)
+  alcance           Int?
+  seguidoresGanhos  Int?
+  criadoEm          DateTime @default(now())
+
+  conteudo      Conteudo  @relation(fields: [conteudoId], references: [id], onDelete: Cascade)
+  workspace     Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  registradoPor Usuario?  @relation(fields: [registradoPorId], references: [id], onDelete: SetNull)
+
+  @@index([conteudoId, coletadoEm])
+  @@index([workspaceId, coletadoEm])
+  @@index([registradoPorId])
 }

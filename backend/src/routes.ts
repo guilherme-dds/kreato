@@ -6,6 +6,7 @@ import { WorkspaceController } from "./controller/WorkspaceController.js";
 import { IdeaController } from "./controller/IdeaController.js";
 import { ContentController } from "./controller/ContentController.js";
 import { AttachmentController, attachmentUpload } from "./controller/AttachmentController.js";
+import { MetricController } from "./controller/MetricController.js";
 import { AuthMiddleware } from "./middlewares/auth.js";
 import { WorkspaceMiddleware, requireWorkspaceRole } from "./middlewares/workspace.js";
 
@@ -22,6 +23,7 @@ const workspaceController = new WorkspaceController();
 const ideaController = new IdeaController();
 const contentController = new ContentController();
 const attachmentController = new AttachmentController();
+const metricController = new MetricController();
 
 export const router = Router();
 
@@ -127,6 +129,19 @@ router.get("/api/anexos/:id/arquivo", AuthMiddleware, WorkspaceMiddleware, (req,
 
 router.delete("/anexos/:id", AuthMiddleware, WorkspaceMiddleware, (req, res) => attachmentController.delete(req, res));
 router.delete("/api/anexos/:id", AuthMiddleware, WorkspaceMiddleware, (req, res) => attachmentController.delete(req, res));
+
+// Content Metrics Routes (manual snapshots of published contents)
+router.get("/metricas/resumo", AuthMiddleware, WorkspaceMiddleware, (req, res) => metricController.summary(req, res));
+router.get("/api/metricas/resumo", AuthMiddleware, WorkspaceMiddleware, (req, res) => metricController.summary(req, res));
+
+router.get("/conteudos/:id/metricas", AuthMiddleware, WorkspaceMiddleware, (req, res) => metricController.index(req, res));
+router.get("/api/conteudos/:id/metricas", AuthMiddleware, WorkspaceMiddleware, (req, res) => metricController.index(req, res));
+
+router.post("/conteudos/:id/metricas", AuthMiddleware, WorkspaceMiddleware, (req, res) => metricController.create(req, res));
+router.post("/api/conteudos/:id/metricas", AuthMiddleware, WorkspaceMiddleware, (req, res) => metricController.create(req, res));
+
+router.delete("/metricas/:id", AuthMiddleware, WorkspaceMiddleware, (req, res) => metricController.delete(req, res));
+router.delete("/api/metricas/:id", AuthMiddleware, WorkspaceMiddleware, (req, res) => metricController.delete(req, res));
 
 // Stripe Routes
 router.post("/stripe/create-checkout-session", AuthMiddleware, (req, res) => stripeController.createCheckoutSession(req, res));
