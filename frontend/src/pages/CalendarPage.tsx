@@ -27,7 +27,8 @@ const byDate = (a: Content, b: Content) =>
   new Date(a.dataPublicacao ?? 0).getTime() - new Date(b.dataPublicacao ?? 0).getTime();
 
 /** Conteúdos publicados ficam fixos no calendário: a data registra quando foram ao ar */
-const canReschedule = (content: Content) => content.etapa !== "PUBLICADO";
+// Agendar é exclusivo de quem gerencia o workspace (o backend devolve isso em permissoes)
+const canReschedule = (content: Content) => content.etapa !== "PUBLICADO" && content.permissoes.editarPublicacao;
 
 export const CalendarPage: React.FC = () => {
   const { token } = useAuth();

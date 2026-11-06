@@ -8,18 +8,19 @@ import {
   CONTENT_FORMATS,
   CONTENT_FORMAT_LABELS,
   CONTENT_STAGE_LABELS,
-  CREATABLE_STAGES,
   PLATFORMS,
   PLATFORM_LABELS,
 } from "../../utils/content";
 
 interface NewContentModalProps {
   initialStage: ContentStage;
+  /** Etapas em que o papel atual pode criar conteúdo */
+  stages: ContentStage[];
   onClose: () => void;
   onCreated: (content: ContentDetail) => void;
 }
 
-export const NewContentModal: React.FC<NewContentModalProps> = ({ initialStage, onClose, onCreated }) => {
+export const NewContentModal: React.FC<NewContentModalProps> = ({ initialStage, stages, onClose, onCreated }) => {
   const { token } = useAuth();
   const { showToast, openPlans } = useLayoutContext();
 
@@ -103,7 +104,7 @@ export const NewContentModal: React.FC<NewContentModalProps> = ({ initialStage, 
             <div className="form-group">
               <label htmlFor="content-etapa">Etapa</label>
               <select id="content-etapa" value={etapa} onChange={(e) => setEtapa(e.target.value as ContentStage)}>
-                {CREATABLE_STAGES.map((stage) => (
+                {stages.map((stage) => (
                   <option key={stage} value={stage}>
                     {CONTENT_STAGE_LABELS[stage]}
                   </option>

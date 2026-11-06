@@ -4,7 +4,16 @@ import { Prisma } from "../generated/prisma/client.js";
 import prisma from "../utils/prisma.js";
 import { logEvent } from "../utils/logger.js";
 import { getPlanLimits, isWithinLimit, rejectPlanLimit } from "../utils/plans.js";
-import { canManageWorkspace } from "../utils/workspaces.js";
+import {
+  canCreateInStage,
+  canDeleteContent,
+  canEditPublication,
+  canMoveContent,
+  contentPermissions,
+  creatableStages,
+  forbiddenFields,
+  isManager,
+} from "../utils/permissions.js";
 import { parsePositiveInt, queryString } from "../utils/request.js";
 import { deleteAssets } from "../utils/minio.js";
 import {
@@ -50,6 +59,9 @@ const listSelect = {
   criadoEm: true,
   atualizadoEm: true,
   autor: { select: { id: true, nome: true, fotoPerfil: true } },
+  roteiroAprovadoEm: true,
+  // Comentários de revisão ainda não resolvidos (badge no card)
+  _count: { select: { comentarios: { where: { resolvido: false } } } },
 } satisfies Prisma.ConteudoSelect;
 
 const detailSelect = {
@@ -57,11 +69,41 @@ const detailSelect = {
   roteiro: true,
   legenda: true,
   ideia: { select: { id: true, titulo: true } },
+  roteiroAprovadoPor: { select: { id: true, nome: true } },
 } satisfies Prisma.ConteudoSelect;
 
-function serializeContent<T extends { hashtags: Prisma.JsonValue }>(content: T) {
-  return { ...content, hashtags: readTags(content.hashtags) };
+type SerializableContent = {
+  hashtags: Prisma.JsonValue;
+  etapa: string;
+  autor: { id: string } | null;
+  _count: { comentarios: number };
+};
+
+/** Normaliza hashtags e anexa o que o usuário atual pode fazer com o conteúdo */
+function serializeContent<T extends SerializableContent>(req: Request, content: T) {
+  const { _count, ...rest } = content;
+  return {
+    ...rest,
+    hashtags: readTags(content.hashtags),
+    comentariosAbertos: _count.comentarios,
+    permissoes: contentPermissions(req.workspaceRole, content.etapa as ContentStage, content.autor?.id === req.userId),
+  };
 }
+
+/** 403 padronizado para ações que o papel no workspace não permite */
+async function rejectRole(req: Request, res: Response, message: string, detalhes: Record<string, unknown>, entidadeId?: number) {
+  await logEvent({
+    userId: req.userId,
+    acao: "PERMISSION_DENIED",
+    req,
+    entidade: "conteudo",
+    entidadeId: entidadeId ?? null,
+    detalhes: { papel: req.workspaceRole, ...detalhes },
+  });
+  return res.status(403).json({ error: message, code: "ROLE_FORBIDDEN" });
+}
+
+const SCRIPT_STAGES: readonly ContentStage[] = ["IDEIA", "ROTEIRO"];
 
 interface ContentFields {
   titulo?: string;
@@ -235,7 +277,8 @@ export class ContentController {
       const limite = getPlanLimits(req.workspacePlan).conteudosAtivos;
 
       return res.json({
-        conteudos: conteudos.map(serializeContent),
+        conteudos: conteudos.map((conteudo) => serializeContent(req, conteudo)),
+        permissoes: { papel: req.workspaceRole, criarEm: creatableStages(req.workspaceRole) },
         uso: { conteudosAtivos, limite: Number.isFinite(limite) ? limite : null },
       });
     } catch (error: any) {
@@ -255,7 +298,7 @@ export class ContentController {
       });
       if (!conteudo) return res.status(404).json({ error: "Conteúdo não encontrado." });
 
-      return res.json({ conteudo: serializeContent(conteudo) });
+      return res.json({ conteudo: serializeContent(req, conteudo) });
     } catch (error: any) {
       console.error("Erro ao buscar conteúdo:", error);
       return res.status(500).json({ error: "Erro ao buscar conteúdo." });
@@ -271,6 +314,16 @@ export class ContentController {
       const rawStage = req.body?.etapa;
       const etapa = rawStage === undefined ? "IDEIA" : parseEnum(CONTENT_STAGES, rawStage);
       if (!etapa) return res.status(400).json({ error: `Etapa inválida. Use: ${CONTENT_STAGES.join(", ")}.` });
+
+      if (!canCreateInStage(req.workspaceRole, etapa)) {
+        return rejectRole(req, res, "Seu papel não permite criar conteúdos nesta etapa.", { etapa });
+      }
+      if (
+        (parsed.data.dataPublicacao !== undefined || parsed.data.urlPublicacao !== undefined) &&
+        !canEditPublication(req.workspaceRole)
+      ) {
+        return rejectRole(req, res, "Só gestores definem data e link de publicação.", { etapa });
+      }
 
       const publication = resolvePublicationDate(etapa, parsed.data.dataPublicacao ?? null);
       if ("error" in publication) return badRequest(res, publication);
@@ -306,7 +359,7 @@ export class ContentController {
         detalhes: { workspaceId: req.workspaceId, etapa, plataforma: conteudo.plataforma, formato: conteudo.formato },
       });
 
-      return res.status(201).json({ conteudo: serializeContent(conteudo) });
+      return res.status(201).json({ conteudo: serializeContent(req, conteudo) });
     } catch (error: any) {
       console.error("Erro ao criar conteúdo:", error);
       return res.status(500).json({ error: "Erro ao criar conteúdo." });
@@ -337,6 +390,19 @@ export class ContentController {
         return res.status(400).json({ error: "Nenhum campo válido para atualizar." });
       }
 
+      const blocked = forbiddenFields(req.workspaceRole, existing.etapa as ContentStage, changedFields);
+      if (blocked.length > 0) {
+        return rejectRole(
+          req,
+          res,
+          req.workspaceRole === "ROTEIRISTA" && !SCRIPT_STAGES.includes(existing.etapa as ContentStage)
+            ? "O roteiro já foi aprovado: peça a um gestor para reabrir o conteúdo se precisar alterar o texto."
+            : "Seu papel não permite alterar estes campos.",
+          { campos: blocked, etapa: existing.etapa },
+          id,
+        );
+      }
+
       if (parsed.data.dataPublicacao !== undefined) {
         const publication = resolvePublicationDate(existing.etapa as ContentStage, parsed.data.dataPublicacao);
         if ("error" in publication) return badRequest(res, publication);
@@ -354,7 +420,7 @@ export class ContentController {
         detalhes: { campos: changedFields },
       });
 
-      return res.json({ conteudo: serializeContent(conteudo) });
+      return res.json({ conteudo: serializeContent(req, conteudo) });
     } catch (error: any) {
       console.error("Erro ao atualizar conteúdo:", error);
       return res.status(500).json({ error: "Erro ao atualizar conteúdo." });
@@ -396,12 +462,32 @@ export class ContentController {
 
       const existing = await prisma.conteudo.findFirst({
         where: { id, workspaceId: req.workspaceId },
-        select: { etapa: true, posicao: true, dataPublicacao: true },
+        select: { etapa: true, posicao: true, dataPublicacao: true, roteiroAprovadoEm: true },
       });
       if (!existing) return res.status(404).json({ error: "Conteúdo não encontrado." });
 
       const previousStage = existing.etapa as ContentStage;
       const stageChanged = previousStage !== etapa;
+
+      if (!canMoveContent(req.workspaceRole, previousStage, etapa)) {
+        return rejectRole(
+          req,
+          res,
+          previousStage === "ROTEIRO" && etapa === "GRAVACAO"
+            ? "O roteiro precisa ser aprovado por um gestor para seguir para a gravação."
+            : "Seu papel não permite mover o conteúdo para esta etapa.",
+          { de: previousStage, para: etapa },
+          id,
+        );
+      }
+      if ((dataPublicacao !== undefined || urlPublicacao !== undefined) && !canEditPublication(req.workspaceRole)) {
+        return rejectRole(req, res, "Só gestores definem data e link de publicação.", { etapa }, id);
+      }
+
+      // Sair de Ideia/Roteiro para a produção aprova o roteiro; voltar para Ideia/Roteiro reabre a aprovação
+      const leavesScript = SCRIPT_STAGES.includes(previousStage) && !SCRIPT_STAGES.includes(etapa);
+      const backToScript = !SCRIPT_STAGES.includes(previousStage) && SCRIPT_STAGES.includes(etapa);
+      const approves = leavesScript && etapa !== FINAL_STAGE && isManager(req.workspaceRole) && !existing.roteiroAprovadoEm;
 
       // Tirar um conteúdo de "Publicado" o devolve ao pipeline ativo, que tem limite no plano Free
       if (previousStage === FINAL_STAGE && etapa !== FINAL_STAGE) {
@@ -430,6 +516,8 @@ export class ContentController {
             posicao: finalPosition,
             dataPublicacao: publication.data,
             ...(urlPublicacao !== undefined ? { urlPublicacao } : {}),
+            ...(approves ? { roteiroAprovadoEm: new Date(), roteiroAprovadoPorId: req.userId } : {}),
+            ...(backToScript ? { roteiroAprovadoEm: null, roteiroAprovadoPorId: null } : {}),
           },
           select: detailSelect,
         });
@@ -446,15 +534,25 @@ export class ContentController {
           detalhes: { de: previousStage, para: etapa },
         });
       }
+      if (approves) {
+        await logEvent({
+          userId: req.userId,
+          acao: "SCRIPT_APPROVED",
+          req,
+          entidade: "conteudo",
+          entidadeId: id,
+          detalhes: { via: "kanban", para: etapa },
+        });
+      }
 
-      return res.json({ conteudo: serializeContent(conteudo) });
+      return res.json({ conteudo: serializeContent(req, conteudo) });
     } catch (error: any) {
       console.error("Erro ao mover conteúdo:", error);
       return res.status(500).json({ error: "Erro ao mover conteúdo." });
     }
   }
 
-  /** Exclui um conteúdo (apenas o autor, ou DONO/GESTOR do workspace) */
+  /** Exclui um conteúdo (DONO/GESTOR; o roteirista autor enquanto está em Ideia/Roteiro) */
   async delete(req: Request, res: Response) {
     try {
       const id = parsePositiveInt(req.params.id);
@@ -466,9 +564,14 @@ export class ContentController {
       });
       if (!existing) return res.status(404).json({ error: "Conteúdo não encontrado." });
 
-      if (existing.autorId !== req.userId && !canManageWorkspace(req.workspaceRole)) {
-        await logEvent({ userId: req.userId, acao: "PERMISSION_DENIED", req, entidade: "conteudo", entidadeId: id });
-        return res.status(403).json({ error: "Apenas o autor ou um gestor pode excluir este conteúdo." });
+      if (!canDeleteContent(req.workspaceRole, existing.etapa as ContentStage, existing.autorId === req.userId)) {
+        return rejectRole(
+          req,
+          res,
+          "Apenas gestores, ou o autor enquanto o conteúdo está em Ideia/Roteiro, podem excluí-lo.",
+          { etapa: existing.etapa },
+          id,
+        );
       }
 
       // Os registros de anexo caem em cascata; os arquivos no MinIO precisam ser removidos à parte
@@ -506,6 +609,10 @@ export class ContentController {
       const etapa = rawStage === undefined ? "ROTEIRO" : parseEnum(CONVERTIBLE_STAGES, rawStage);
       if (!etapa) {
         return res.status(400).json({ error: `Etapa inválida para conversão. Use: ${CONVERTIBLE_STAGES.join(", ")}.` });
+      }
+
+      if (!canCreateInStage(req.workspaceRole, etapa)) {
+        return rejectRole(req, res, "Seu papel não permite levar ideias para esta etapa.", { etapa });
       }
 
       const ideia = await prisma.ideia.findFirst({
@@ -576,7 +683,7 @@ export class ContentController {
         detalhes: { ideiaId: ideaId, etapa },
       });
 
-      return res.status(201).json({ conteudo: serializeContent(conteudo) });
+      return res.status(201).json({ conteudo: serializeContent(req, conteudo) });
     } catch (error: any) {
       console.error("Erro ao converter ideia:", error);
       return res.status(500).json({ error: "Erro ao converter ideia em conteúdo." });

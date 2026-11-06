@@ -14,6 +14,7 @@ import type {
   IdeaInput,
   IdeasResponse,
   ContentCreateInput,
+  ContentComment,
   ContentDetail,
   ContentFilters,
   ContentInput,
@@ -471,6 +472,68 @@ export async function moveContentApi(id: number, input: ContentMoveInput, token?
 
 export async function deleteContentApi(id: number, token?: string | null): Promise<void> {
   await fetchWithAuth<void>(`/conteudos/${id}`, { method: "DELETE" }, token, "Erro ao excluir conteúdo");
+}
+
+/* ==========================================================================
+   REVIEW (COMENTÁRIOS E APROVAÇÃO DE ROTEIRO) API
+   ========================================================================== */
+
+export async function getCommentsApi(contentId: number, token?: string | null): Promise<ContentComment[]> {
+  const data = await fetchWithAuth<{ comentarios: ContentComment[] }>(
+    `/conteudos/${contentId}/comentarios`,
+    {},
+    token,
+    "Erro ao carregar comentários"
+  );
+  return data.comentarios;
+}
+
+export async function createCommentApi(contentId: number, texto: string, token?: string | null): Promise<ContentComment> {
+  const data = await fetchWithAuth<{ comentario: ContentComment }>(
+    `/conteudos/${contentId}/comentarios`,
+    { method: "POST", body: JSON.stringify({ texto }) },
+    token,
+    "Erro ao enviar comentário"
+  );
+  return data.comentario;
+}
+
+export async function updateCommentApi(
+  commentId: number,
+  input: { texto?: string; resolvido?: boolean },
+  token?: string | null
+): Promise<ContentComment> {
+  const data = await fetchWithAuth<{ comentario: ContentComment }>(
+    `/comentarios/${commentId}`,
+    { method: "PATCH", body: JSON.stringify(input) },
+    token,
+    "Erro ao atualizar comentário"
+  );
+  return data.comentario;
+}
+
+export async function deleteCommentApi(commentId: number, token?: string | null): Promise<void> {
+  await fetchWithAuth<void>(`/comentarios/${commentId}`, { method: "DELETE" }, token, "Erro ao excluir comentário");
+}
+
+export async function approveScriptApi(contentId: number, texto: string, token?: string | null): Promise<string> {
+  const data = await fetchWithAuth<{ message: string }>(
+    `/conteudos/${contentId}/aprovar-roteiro`,
+    { method: "POST", body: JSON.stringify(texto ? { texto } : {}) },
+    token,
+    "Erro ao aprovar roteiro"
+  );
+  return data.message;
+}
+
+export async function requestChangesApi(contentId: number, texto: string, token?: string | null): Promise<string> {
+  const data = await fetchWithAuth<{ message: string }>(
+    `/conteudos/${contentId}/solicitar-ajustes`,
+    { method: "POST", body: JSON.stringify({ texto }) },
+    token,
+    "Erro ao pedir ajustes"
+  );
+  return data.message;
 }
 
 /* ==========================================================================

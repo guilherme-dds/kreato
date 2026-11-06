@@ -1,18 +1,20 @@
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
-import { ArrowLeft, Check, ExternalLink, Lightbulb, RefreshCw, Save, SquareKanban, Trash2, Wand2 } from "lucide-react";
+import { ArrowLeft, Check, CheckCircle2, ExternalLink, Lightbulb, Lock, RefreshCw, Save, SquareKanban, Trash2, Wand2 } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
 import { useLayoutContext } from "../layouts/layoutContext";
 import { AttachmentsPanel } from "../components/pipeline/AttachmentsPanel";
 import { MetricsPanel } from "../components/pipeline/MetricsPanel";
+import { ReviewPanel } from "../components/pipeline/ReviewPanel";
 import { deleteContentApi, getContentApi, isPlanLimitError, planLimitResource, moveContentApi, updateContentApi } from "../api/backend";
-import type { ContentDetail, ContentFormat, ContentStage, Platform } from "../types";
+import type { ContentDetail, ContentFormat, ContentInput, ContentStage, Platform } from "../types";
 import {
   CONTENT_FORMATS,
   CONTENT_FORMAT_LABELS,
   CONTENT_STAGES,
   CONTENT_STAGE_LABELS,
   PLATFORMS,
+  formatDateTime,
   PLATFORM_LABELS,
   countWords,
   estimateSpeakingTime,
@@ -68,6 +70,17 @@ function isSameForm(a: EditorForm, b: EditorForm): boolean {
   return (Object.keys(a) as (keyof EditorForm)[]).every((key) => a[key] === b[key]);
 }
 
+/** Explica por que os textos estão travados para o papel atual */
+function readOnlyReason(content: ContentDetail): string {
+  const { papel } = content.permissoes;
+  if (papel === "ROTEIRISTA") {
+    return content.roteiroAprovadoEm
+      ? "O roteiro já foi aprovado. Para mudar o texto, peça a um gestor que solicite ajustes."
+      : "Este conteúdo está em produção: só gestores alteram o texto nesta etapa.";
+  }
+  return "Seu papel neste workspace não edita textos. Deixe sugestões nos comentários da revisão.";
+}
+
 export const ContentEditorPage: React.FC = () => {
   const { id } = useParams();
   const contentId = Number(id);
@@ -86,6 +99,8 @@ export const ContentEditorPage: React.FC = () => {
   const dateInputRef = useRef<HTMLInputElement>(null);
 
   const isDirty = content !== null && form !== null && !isSameForm(form, toForm(content));
+  const canEditText = content?.permissoes.editarTexto ?? false;
+  const canEditPublication = content?.permissoes.editarPublicacao ?? false;
   const hashtags = form ? parseHashtagsInput(form.hashtags) : [];
   const words = form ? countWords(form.roteiro) : 0;
 
@@ -130,28 +145,36 @@ export const ContentEditorPage: React.FC = () => {
   };
 
   const save = useCallback(async () => {
-    if (!content || !form || isSaving) return;
-    if (!form.titulo.trim()) {
+    if (!content || !form || isSaving || !isDirty) return;
+    const { editarTexto, editarPublicacao } = content.permissoes;
+    if (editarTexto && !form.titulo.trim()) {
       showToast("error", "O título não pode ficar vazio.");
       return;
     }
 
+    // Envia só os grupos de campos que o papel pode alterar (o backend recusa o resto)
+    const input: Partial<ContentInput> = {};
+    if (editarTexto) {
+      Object.assign(input, {
+        titulo: form.titulo.trim(),
+        roteiro: form.roteiro,
+        legenda: form.legenda,
+        hashtags: parseHashtagsInput(form.hashtags),
+        plataforma: form.plataforma || null,
+        formato: form.formato || null,
+      });
+    }
+    if (editarPublicacao) {
+      Object.assign(input, {
+        dataPublicacao: fromDateTimeLocal(form.dataPublicacao),
+        urlPublicacao: form.urlPublicacao.trim() || null,
+      });
+    }
+    if (Object.keys(input).length === 0) return;
+
     setIsSaving(true);
     try {
-      const saved = await updateContentApi(
-        content.id,
-        {
-          titulo: form.titulo.trim(),
-          roteiro: form.roteiro,
-          legenda: form.legenda,
-          hashtags: parseHashtagsInput(form.hashtags),
-          plataforma: form.plataforma || null,
-          formato: form.formato || null,
-          dataPublicacao: fromDateTimeLocal(form.dataPublicacao),
-          urlPublicacao: form.urlPublicacao.trim() || null,
-        },
-        token
-      );
+      const saved = await updateContentApi(content.id, input, token);
       setContent(saved);
       setForm(toForm(saved));
       setJustSaved(true);
@@ -160,7 +183,18 @@ export const ContentEditorPage: React.FC = () => {
     } finally {
       setIsSaving(false);
     }
-  }, [content, form, isSaving, showToast, token]);
+  }, [content, form, isDirty, isSaving, showToast, token]);
+
+  /** Recarrega do servidor após uma revisão (etapa e aprovação mudam); preserva o que está sendo editado */
+  const reloadContent = useCallback(async () => {
+    try {
+      const loaded = await getContentApi(contentId, token);
+      setContent(loaded);
+      setForm((prev) => (prev && isDirty ? prev : toForm(loaded)));
+    } catch (err) {
+      showToast("error", err instanceof Error ? err.message : "Erro ao recarregar conteúdo");
+    }
+  }, [contentId, isDirty, showToast, token]);
 
   // Ctrl/Cmd + S salva sem sair do editor
   useEffect(() => {
@@ -176,6 +210,15 @@ export const ContentEditorPage: React.FC = () => {
 
   const changeStage = async (stage: ContentStage) => {
     if (!content || !form || stage === content.etapa || isMoving) return;
+    if (!content.permissoes.moverPara.includes(stage)) {
+      showToast(
+        "error",
+        content.etapa === "ROTEIRO" && stage === "GRAVACAO"
+          ? "Use “Aprovar roteiro” na revisão para enviar à gravação (somente gestores)."
+          : `Seu papel não permite mover este conteúdo para ${CONTENT_STAGE_LABELS[stage]}.`
+      );
+      return;
+    }
 
     const dataPublicacao = fromDateTimeLocal(form.dataPublicacao);
     if (stage === "AGENDADO" && !dataPublicacao) {
@@ -187,7 +230,8 @@ export const ContentEditorPage: React.FC = () => {
     setIsMoving(true);
     try {
       // Só envia a data se preenchida: limpar o campo sem salvar não deve apagar a data já salva
-      const moved = await moveContentApi(content.id, { etapa: stage, ...(dataPublicacao ? { dataPublicacao } : {}) }, token);
+      const sendDate = dataPublicacao && content.permissoes.editarPublicacao;
+      const moved = await moveContentApi(content.id, { etapa: stage, ...(sendDate ? { dataPublicacao } : {}) }, token);
       setContent(moved);
       // Mantém o que está sendo editado; só a data vem do servidor (publicar sem data assume agora)
       setForm((prev) => (prev ? { ...prev, dataPublicacao: toDateTimeLocal(moved.dataPublicacao) } : prev));
@@ -262,9 +306,11 @@ export const ContentEditorPage: React.FC = () => {
               <Check size={14} /> Salvo
             </span>
           ) : null}
-          <button className="btn btn-primary btn-sm" onClick={save} disabled={!isDirty || isSaving} title="Ctrl+S">
-            <Save size={15} /> Salvar
-          </button>
+          {(canEditText || canEditPublication) && (
+            <button className="btn btn-primary btn-sm" onClick={save} disabled={!isDirty || isSaving} title="Ctrl+S">
+              <Save size={15} /> Salvar
+            </button>
+          )}
         </div>
       </div>
 
@@ -274,7 +320,7 @@ export const ContentEditorPage: React.FC = () => {
             key={stage}
             className={`stage-step ${index < stageIndex ? "is-done" : ""} ${index === stageIndex ? "is-current" : ""}`}
             onClick={() => changeStage(stage)}
-            disabled={isMoving}
+            disabled={isMoving || (index !== stageIndex && !content.permissoes.moverPara.includes(stage))}
             aria-current={index === stageIndex ? "step" : undefined}
           >
             <span className="stage-step-dot">{index < stageIndex ? <Check size={12} /> : index + 1}</span>
@@ -283,12 +329,30 @@ export const ContentEditorPage: React.FC = () => {
         ))}
       </nav>
 
+      {(content.roteiroAprovadoEm || !canEditText) && (
+        <div className="editor-notices">
+          {content.roteiroAprovadoEm && (
+            <span className="editor-approved" title={formatDateTime(content.roteiroAprovadoEm)}>
+              <CheckCircle2 size={14} />
+              Roteiro aprovado{content.roteiroAprovadoPor ? ` por ${content.roteiroAprovadoPor.nome}` : ""}{" "}
+              {formatRelativeDate(content.roteiroAprovadoEm)}
+            </span>
+          )}
+          {!canEditText && (
+            <span className="editor-readonly">
+              <Lock size={14} /> {readOnlyReason(content)}
+            </span>
+          )}
+        </div>
+      )}
+
       <div className="editor-layout">
         <section className="editor-main">
           <input
             className="editor-title"
             value={form.titulo}
             onChange={(e) => updateField("titulo", e.target.value)}
+            readOnly={!canEditText}
             maxLength={150}
             placeholder="Título do conteúdo"
             aria-label="Título"
@@ -300,7 +364,7 @@ export const ContentEditorPage: React.FC = () => {
               <span className="editor-script-stats">
                 {words} {words === 1 ? "palavra" : "palavras"} · ~{estimateSpeakingTime(words)} falando
               </span>
-              {!form.roteiro.trim() && (
+              {canEditText && !form.roteiro.trim() && (
                 <button className="editor-template-btn" onClick={() => updateField("roteiro", SCRIPT_TEMPLATE)}>
                   <Wand2 size={14} /> Usar estrutura
                 </button>
@@ -309,11 +373,20 @@ export const ContentEditorPage: React.FC = () => {
             <textarea
               value={form.roteiro}
               onChange={(e) => updateField("roteiro", e.target.value)}
+              readOnly={!canEditText}
               maxLength={SCRIPT_MAX}
               placeholder="Escreva o roteiro: gancho, desenvolvimento e chamada para ação..."
               aria-label="Roteiro"
             />
           </div>
+
+          <ReviewPanel
+            contentId={content.id}
+            stage={content.etapa}
+            permissions={content.permissoes}
+            reviewBlockedReason={isDirty ? "Salve as alterações do roteiro antes de revisar." : null}
+            onContentChanged={reloadContent}
+          />
 
           <MetricsPanel contentId={content.id} stage={content.etapa} />
         </section>
@@ -326,6 +399,7 @@ export const ContentEditorPage: React.FC = () => {
               <select
                 id="editor-plataforma"
                 value={form.plataforma}
+                disabled={!canEditText}
                 onChange={(e) => updateField("plataforma", e.target.value as Platform | "")}
               >
                 <option value="">Não definida</option>
@@ -341,6 +415,7 @@ export const ContentEditorPage: React.FC = () => {
               <select
                 id="editor-formato"
                 value={form.formato}
+                disabled={!canEditText}
                 onChange={(e) => updateField("formato", e.target.value as ContentFormat | "")}
               >
                 <option value="">Não definido</option>
@@ -358,6 +433,8 @@ export const ContentEditorPage: React.FC = () => {
                 ref={dateInputRef}
                 type="datetime-local"
                 value={form.dataPublicacao}
+                disabled={!canEditPublication}
+                title={canEditPublication ? undefined : "Só gestores definem a data de publicação"}
                 onChange={(e) => updateField("dataPublicacao", e.target.value)}
               />
             </div>
@@ -368,6 +445,7 @@ export const ContentEditorPage: React.FC = () => {
                   id="editor-url"
                   type="url"
                   value={form.urlPublicacao}
+                  disabled={!canEditPublication}
                   onChange={(e) => updateField("urlPublicacao", e.target.value)}
                   placeholder="https://..."
                 />
@@ -393,6 +471,7 @@ export const ContentEditorPage: React.FC = () => {
                 id="editor-legenda"
                 rows={5}
                 value={form.legenda}
+                readOnly={!canEditText}
                 onChange={(e) => updateField("legenda", e.target.value)}
                 maxLength={CAPTION_MAX}
                 placeholder="Legenda do post"
@@ -409,6 +488,7 @@ export const ContentEditorPage: React.FC = () => {
                 id="editor-hashtags"
                 rows={2}
                 value={form.hashtags}
+                readOnly={!canEditText}
                 onChange={(e) => updateField("hashtags", e.target.value)}
                 placeholder="#dicas #edicao #reels"
               />
@@ -426,9 +506,11 @@ export const ContentEditorPage: React.FC = () => {
             <p>
               Criado por {content.autor?.nome ?? "membro removido"} · atualizado {formatRelativeDate(content.atualizadoEm)}
             </p>
-            <button className="editor-delete" onClick={handleDelete}>
-              <Trash2 size={14} /> Excluir conteúdo
-            </button>
+            {content.permissoes.excluir && (
+              <button className="editor-delete" onClick={handleDelete}>
+                <Trash2 size={14} /> Excluir conteúdo
+              </button>
+            )}
           </div>
         </aside>
       </div>

@@ -10,6 +10,7 @@ import { MetricController } from "./controller/MetricController.js";
 import { DashboardController } from "./controller/DashboardController.js";
 import { TeamController } from "./controller/TeamController.js";
 import { InviteController } from "./controller/InviteController.js";
+import { ReviewController } from "./controller/ReviewController.js";
 import { AuthMiddleware } from "./middlewares/auth.js";
 import { WorkspaceMiddleware, requireWorkspaceRole } from "./middlewares/workspace.js";
 
@@ -30,6 +31,7 @@ const metricController = new MetricController();
 const dashboardController = new DashboardController();
 const teamController = new TeamController();
 const inviteController = new InviteController();
+const reviewController = new ReviewController();
 
 export const router = Router();
 
@@ -166,6 +168,25 @@ router.patch("/api/conteudos/:id", AuthMiddleware, WorkspaceMiddleware, (req, re
 
 router.delete("/conteudos/:id", AuthMiddleware, WorkspaceMiddleware, (req, res) => contentController.delete(req, res));
 router.delete("/api/conteudos/:id", AuthMiddleware, WorkspaceMiddleware, (req, res) => contentController.delete(req, res));
+
+// Review Routes (comments, script approval and change requests)
+router.get("/conteudos/:id/comentarios", AuthMiddleware, WorkspaceMiddleware, (req, res) => reviewController.index(req, res));
+router.get("/api/conteudos/:id/comentarios", AuthMiddleware, WorkspaceMiddleware, (req, res) => reviewController.index(req, res));
+
+router.post("/conteudos/:id/comentarios", AuthMiddleware, WorkspaceMiddleware, (req, res) => reviewController.create(req, res));
+router.post("/api/conteudos/:id/comentarios", AuthMiddleware, WorkspaceMiddleware, (req, res) => reviewController.create(req, res));
+
+router.patch("/comentarios/:id", AuthMiddleware, WorkspaceMiddleware, (req, res) => reviewController.update(req, res));
+router.patch("/api/comentarios/:id", AuthMiddleware, WorkspaceMiddleware, (req, res) => reviewController.update(req, res));
+
+router.delete("/comentarios/:id", AuthMiddleware, WorkspaceMiddleware, (req, res) => reviewController.delete(req, res));
+router.delete("/api/comentarios/:id", AuthMiddleware, WorkspaceMiddleware, (req, res) => reviewController.delete(req, res));
+
+router.post("/conteudos/:id/aprovar-roteiro", AuthMiddleware, WorkspaceMiddleware, (req, res) => reviewController.approveScript(req, res));
+router.post("/api/conteudos/:id/aprovar-roteiro", AuthMiddleware, WorkspaceMiddleware, (req, res) => reviewController.approveScript(req, res));
+
+router.post("/conteudos/:id/solicitar-ajustes", AuthMiddleware, WorkspaceMiddleware, (req, res) => reviewController.requestChanges(req, res));
+router.post("/api/conteudos/:id/solicitar-ajustes", AuthMiddleware, WorkspaceMiddleware, (req, res) => reviewController.requestChanges(req, res));
 
 // Content Attachments Routes (MinIO "assets" bucket)
 router.get("/conteudos/:id/anexos", AuthMiddleware, WorkspaceMiddleware, (req, res) => attachmentController.index(req, res));

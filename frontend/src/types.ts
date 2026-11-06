@@ -86,12 +86,49 @@ export interface Content {
   criadoEm: string;
   atualizadoEm: string;
   autor: ContentAuthor | null;
+  roteiroAprovadoEm: string | null;
+  /** Comentários de revisão ainda não resolvidos */
+  comentariosAbertos: number;
+  permissoes: ContentPermissions;
+}
+
+export type WorkspaceRole = "DONO" | "GESTOR" | "ROTEIRISTA" | "EDITOR";
+
+/** O que o usuário atual pode fazer com um conteúdo (calculado pelo backend) */
+export interface ContentPermissions {
+  papel: WorkspaceRole;
+  editarTexto: boolean;
+  editarPublicacao: boolean;
+  moverPara: ContentStage[];
+  aprovarRoteiro: boolean;
+  solicitarAjustes: boolean;
+  excluir: boolean;
+  moderarComentarios: boolean;
 }
 
 export interface ContentDetail extends Content {
   roteiro: string | null;
   legenda: string | null;
   ideia: { id: number; titulo: string } | null;
+  roteiroAprovadoPor: { id: string; nome: string } | null;
+}
+
+export type CommentType = "COMENTARIO" | "APROVACAO" | "AJUSTE";
+
+export interface ContentComment {
+  id: number;
+  texto: string;
+  tipo: CommentType;
+  etapa: ContentStage;
+  resolvido: boolean;
+  resolvidoEm: string | null;
+  criadoEm: string;
+  atualizadoEm: string;
+  autor: ContentAuthor | null;
+  resolvidoPor: { id: string; nome: string } | null;
+  podeEditar: boolean;
+  podeExcluir: boolean;
+  podeResolver: boolean;
 }
 
 export interface ContentInput {
@@ -128,6 +165,7 @@ export interface ContentFilters {
 export interface ContentsResponse {
   conteudos: Content[];
   uso: { conteudosAtivos: number; limite: number | null };
+  permissoes: { papel: WorkspaceRole; criarEm: ContentStage[] };
 }
 
 export interface Attachment {

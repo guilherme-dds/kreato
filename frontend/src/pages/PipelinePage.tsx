@@ -12,7 +12,6 @@ import type { Content, ContentMoveInput, ContentStage, Platform } from "../types
 import {
   CONTENT_STAGES,
   CONTENT_STAGE_LABELS,
-  CREATABLE_STAGES,
   PLATFORMS,
   PLATFORM_LABELS,
 } from "../utils/content";
@@ -60,6 +59,7 @@ export const PipelinePage: React.FC = () => {
 
   const [contents, setContents] = useState<Content[]>([]);
   const [limit, setLimit] = useState<number | null>(null);
+  const [creatableStages, setCreatableStages] = useState<ContentStage[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -90,6 +90,7 @@ export const PipelinePage: React.FC = () => {
       if (current !== requestId.current) return;
       setContents(response.conteudos);
       setLimit(response.uso.limite);
+      setCreatableStages(response.permissoes.criarEm);
     } catch (err) {
       if (current === requestId.current) setError(err instanceof Error ? err.message : "Erro ao carregar conteúdos");
     } finally {
@@ -175,6 +176,16 @@ export const PipelinePage: React.FC = () => {
     const currentIndex = (columns.get(content.etapa) ?? []).findIndex((c) => c.id === content.id);
     if (stage === content.etapa && index === currentIndex) return;
 
+    if (!content.permissoes.moverPara.includes(stage)) {
+      showToast(
+        "error",
+        content.etapa === "ROTEIRO" && stage === "GRAVACAO"
+          ? "O roteiro precisa ser aprovado por um gestor para seguir para a gravação."
+          : `Seu papel não permite mover conteúdos para ${CONTENT_STAGE_LABELS[stage]}.`
+      );
+      return;
+    }
+
     if (stage === "AGENDADO" && !content.dataPublicacao) {
       setPendingSchedule({ content, index });
       return;
@@ -190,6 +201,11 @@ export const PipelinePage: React.FC = () => {
 
   const handleDragOver = (e: React.DragEvent<HTMLDivElement>, stage: ContentStage) => {
     if (!dragging) return;
+    // Colunas fora do alcance do papel não aceitam o drop (cursor "proibido", sem indicador)
+    if (!dragging.permissoes.moverPara.includes(stage)) {
+      if (dropTarget) setDropTarget(null);
+      return;
+    }
     e.preventDefault();
     e.dataTransfer.dropEffect = "move";
 
@@ -228,9 +244,11 @@ export const PipelinePage: React.FC = () => {
         title="Pipeline"
         description="Acompanhe cada conteúdo da ideia à publicação. Arraste os cards entre as etapas."
         actions={
-          <button className="btn btn-primary" onClick={() => setNewContentStage("IDEIA")}>
-            <Plus size={18} /> Novo conteúdo
-          </button>
+          creatableStages.length > 0 && (
+            <button className="btn btn-primary" onClick={() => setNewContentStage(creatableStages[0])}>
+              <Plus size={18} /> Novo conteúdo
+            </button>
+          )
         }
       />
 
@@ -293,15 +311,16 @@ export const PipelinePage: React.FC = () => {
             const visible = visibleCards(stage);
             const hiddenPublished = hasFilters ? 0 : column.length - visible.length;
             const isTarget = dropTarget?.stage === stage;
+            const isLocked = dragging !== null && !dragging.permissoes.moverPara.includes(stage);
             const cardsWithoutDragged = visible.filter((c) => c.id !== dragging?.id);
 
             return (
-              <section key={stage} className={`kanban-column stage-${stage.toLowerCase()} ${isTarget ? "is-drop-target" : ""}`}>
+              <section key={stage} className={`kanban-column stage-${stage.toLowerCase()} ${isTarget ? "is-drop-target" : ""} ${isLocked ? "is-drop-locked" : ""}`}>
                 <header className="kanban-column-header">
                   <span className="kanban-column-dot" />
                   <h2>{CONTENT_STAGE_LABELS[stage]}</h2>
                   <span className="kanban-column-count">{hasFilters ? `${visible.length}/${column.length}` : column.length}</span>
-                  {CREATABLE_STAGES.includes(stage) && (
+                  {creatableStages.includes(stage) && (
                     <button
                       className="idea-action kanban-column-add"
                       onClick={() => setNewContentStage(stage)}
@@ -352,6 +371,7 @@ export const PipelinePage: React.FC = () => {
       {newContentStage && (
         <NewContentModal
           initialStage={newContentStage}
+          stages={creatableStages}
           onClose={() => setNewContentStage(null)}
           onCreated={(created) => {
             setNewContentStage(null);

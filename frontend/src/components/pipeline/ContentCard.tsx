@@ -1,6 +1,6 @@
 import React from "react";
 import { Link } from "react-router-dom";
-import { CalendarClock, ChevronLeft, ChevronRight, ExternalLink } from "lucide-react";
+import { CalendarClock, CheckCircle2, ChevronLeft, ChevronRight, ExternalLink, MessageSquare } from "lucide-react";
 import type { Content } from "../../types";
 import { CONTENT_FORMAT_LABELS, CONTENT_STAGE_LABELS, CONTENT_STAGES, PLATFORM_LABELS, formatDateTime } from "../../utils/content";
 
@@ -25,6 +25,10 @@ export const ContentCard: React.FC<ContentCardProps> = ({
   const stageIndex = CONTENT_STAGES.indexOf(content.etapa);
   const previousStage = CONTENT_STAGES[stageIndex - 1];
   const nextStage = CONTENT_STAGES[stageIndex + 1];
+  // Só arrasta se o papel pode levar o card para alguma outra coluna
+  const canMoveElsewhere = content.permissoes.moverPara.some((stage) => stage !== content.etapa);
+  const canGoBack = previousStage !== undefined && content.permissoes.moverPara.includes(previousStage);
+  const canGoForward = nextStage !== undefined && content.permissoes.moverPara.includes(nextStage);
   const isOverdue =
     content.etapa === "AGENDADO" && content.dataPublicacao !== null && new Date(content.dataPublicacao) < new Date();
 
@@ -32,7 +36,7 @@ export const ContentCard: React.FC<ContentCardProps> = ({
     <article
       className={`kanban-card ${isDragging ? "is-dragging" : ""} ${isBusy ? "is-busy" : ""}`}
       data-card-id={content.id}
-      draggable={!isBusy}
+      draggable={!isBusy && canMoveElsewhere}
       onDragStart={(e) => {
         e.dataTransfer.effectAllowed = "move";
         e.dataTransfer.setData("text/plain", String(content.id));
@@ -67,6 +71,21 @@ export const ContentCard: React.FC<ContentCardProps> = ({
         <span className="kanban-card-author" title={content.autor?.nome ?? undefined}>
           {content.autor?.nome?.charAt(0).toUpperCase() ?? "?"}
         </span>
+        {content.comentariosAbertos > 0 && (
+          <span
+            className="kanban-card-comments"
+            title={`${content.comentariosAbertos} comentário(s) em aberto`}
+            aria-label={`${content.comentariosAbertos} comentário(s) em aberto`}
+          >
+            <MessageSquare size={13} />
+            {content.comentariosAbertos}
+          </span>
+        )}
+        {content.roteiroAprovadoEm && (
+          <span className="kanban-card-approved" title="Roteiro aprovado" aria-label="Roteiro aprovado">
+            <CheckCircle2 size={14} />
+          </span>
+        )}
         {content.urlPublicacao && (
           <a
             className="idea-action"
@@ -82,7 +101,7 @@ export const ContentCard: React.FC<ContentCardProps> = ({
         <div className="kanban-card-steps">
           <button
             className="idea-action"
-            disabled={!previousStage || isBusy}
+            disabled={!canGoBack || isBusy}
             onClick={() => onStep(content, -1)}
             title={previousStage ? `Voltar para ${CONTENT_STAGE_LABELS[previousStage]}` : undefined}
             aria-label="Mover para a etapa anterior"
@@ -91,7 +110,7 @@ export const ContentCard: React.FC<ContentCardProps> = ({
           </button>
           <button
             className="idea-action"
-            disabled={!nextStage || isBusy}
+            disabled={!canGoForward || isBusy}
             onClick={() => onStep(content, 1)}
             title={nextStage ? `Avançar para ${CONTENT_STAGE_LABELS[nextStage]}` : undefined}
             aria-label="Mover para a próxima etapa"

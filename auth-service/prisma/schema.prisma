@@ -20,16 +20,19 @@ model Usuario {
   fotoPerfil           String?  @db.Text
   criadoEm             DateTime @default(now())
 
-  refreshTokens    RefreshToken[]
-  resetTokens      ResetToken[]
-  workspacesDono   Workspace[]       @relation("WorkspaceDono")
-  participacoes    MembroWorkspace[]
-  ideias           Ideia[]
-  conteudos        Conteudo[]
-  anexos           Anexo[]
-  metricas         Metrica[]
-  convitesEnviados Convite[]         @relation("ConviteRemetente")
-  convitesAceitos  Convite[]         @relation("ConviteAceitoPor")
+  refreshTokens         RefreshToken[]
+  resetTokens           ResetToken[]
+  workspacesDono        Workspace[]          @relation("WorkspaceDono")
+  participacoes         MembroWorkspace[]
+  ideias                Ideia[]
+  conteudos             Conteudo[]
+  anexos                Anexo[]
+  metricas              Metrica[]
+  convitesEnviados      Convite[]            @relation("ConviteRemetente")
+  convitesAceitos       Convite[]            @relation("ConviteAceitoPor")
+  roteirosAprovados     Conteudo[]           @relation("RoteiroAprovadoPor")
+  comentarios           ComentarioConteudo[] @relation("ComentarioAutor")
+  comentariosResolvidos ComentarioConteudo[] @relation("ComentarioResolvidoPor")
 }
 
 model RefreshToken {
@@ -62,13 +65,14 @@ model Workspace {
   metaSemanal        Int      @default(3)
   criadoEm           DateTime @default(now())
 
-  dono      Usuario           @relation("WorkspaceDono", fields: [donoId], references: [id], onDelete: Cascade)
-  membros   MembroWorkspace[]
-  ideias    Ideia[]
-  conteudos Conteudo[]
-  anexos    Anexo[]
-  metricas  Metrica[]
-  convites  Convite[]
+  dono        Usuario              @relation("WorkspaceDono", fields: [donoId], references: [id], onDelete: Cascade)
+  membros     MembroWorkspace[]
+  ideias      Ideia[]
+  conteudos   Conteudo[]
+  anexos      Anexo[]
+  metricas    Metrica[]
+  convites    Convite[]
+  comentarios ComentarioConteudo[]
 
   @@index([donoId])
 }
@@ -111,36 +115,42 @@ model Ideia {
 }
 
 model Conteudo {
-  id             Int       @id @default(autoincrement())
-  workspaceId    String    @db.VarChar(36)
-  autorId        String?   @db.VarChar(36)
+  id                   Int       @id @default(autoincrement())
+  workspaceId          String    @db.VarChar(36)
+  autorId              String?   @db.VarChar(36)
   // Ideia de origem: cada ideia pode ser convertida em no máximo um conteúdo
-  ideiaId        Int?      @unique
-  titulo         String    @db.VarChar(150)
+  ideiaId              Int?      @unique
+  titulo               String    @db.VarChar(150)
   // IDEIA → ROTEIRO → GRAVACAO → EDICAO → AGENDADO → PUBLICADO
-  etapa          String    @default("IDEIA") @db.VarChar(20)
+  etapa                String    @default("IDEIA") @db.VarChar(20)
   // Ordem do card dentro da coluna (etapa) do kanban
-  posicao        Int       @default(0)
-  roteiro        String?   @db.Text
-  legenda        String?   @db.Text
+  posicao              Int       @default(0)
+  roteiro              String?   @db.Text
+  legenda              String?   @db.Text
   // Lista de hashtags normalizadas, sem "#"
-  hashtags       Json?
-  plataforma     String?   @db.VarChar(20)
-  formato        String?   @db.VarChar(20)
-  dataPublicacao DateTime?
-  urlPublicacao  String?   @db.VarChar(500)
-  criadoEm       DateTime  @default(now())
-  atualizadoEm   DateTime  @updatedAt
+  hashtags             Json?
+  plataforma           String?   @db.VarChar(20)
+  formato              String?   @db.VarChar(20)
+  dataPublicacao       DateTime?
+  urlPublicacao        String?   @db.VarChar(500)
+  // Aprovação do roteiro (ROTEIRO -> GRAVACAO por DONO/GESTOR); limpa ao voltar para roteiro
+  roteiroAprovadoEm    DateTime?
+  roteiroAprovadoPorId String?   @db.VarChar(36)
+  criadoEm             DateTime  @default(now())
+  atualizadoEm         DateTime  @updatedAt
 
-  workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
-  autor     Usuario?  @relation(fields: [autorId], references: [id], onDelete: SetNull)
-  ideia     Ideia?    @relation(fields: [ideiaId], references: [id], onDelete: SetNull)
-  anexos    Anexo[]
-  metricas  Metrica[]
+  workspace          Workspace            @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  autor              Usuario?             @relation(fields: [autorId], references: [id], onDelete: SetNull)
+  roteiroAprovadoPor Usuario?             @relation("RoteiroAprovadoPor", fields: [roteiroAprovadoPorId], references: [id], onDelete: SetNull)
+  ideia              Ideia?               @relation(fields: [ideiaId], references: [id], onDelete: SetNull)
+  anexos             Anexo[]
+  metricas           Metrica[]
+  comentarios        ComentarioConteudo[]
 
   @@index([workspaceId, etapa, posicao])
   @@index([workspaceId, dataPublicacao])
   @@index([autorId])
+  @@index([roteiroAprovadoPorId])
 }
 
 model Anexo {
@@ -215,4 +225,32 @@ model Convite {
   @@index([email, status])
   @@index([convidadoPorId])
   @@index([aceitoPorId])
+}
+
+/// Comentários de revisão de um conteúdo (inclui registros de aprovação e pedidos de ajuste)
+model ComentarioConteudo {
+  id             Int       @id @default(autoincrement())
+  conteudoId     Int
+  workspaceId    String    @db.VarChar(36)
+  autorId        String?   @db.VarChar(36)
+  texto          String    @db.Text
+  // COMENTARIO, APROVACAO ou AJUSTE
+  tipo           String    @default("COMENTARIO") @db.VarChar(20)
+  // Etapa do conteúdo quando o comentário foi feito
+  etapa          String    @db.VarChar(20)
+  resolvido      Boolean   @default(false)
+  resolvidoPorId String?   @db.VarChar(36)
+  resolvidoEm    DateTime?
+  criadoEm       DateTime  @default(now())
+  atualizadoEm   DateTime  @updatedAt
+
+  conteudo     Conteudo  @relation(fields: [conteudoId], references: [id], onDelete: Cascade)
+  workspace    Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  autor        Usuario?  @relation("ComentarioAutor", fields: [autorId], references: [id], onDelete: SetNull)
+  resolvidoPor Usuario?  @relation("ComentarioResolvidoPor", fields: [resolvidoPorId], references: [id], onDelete: SetNull)
+
+  @@index([conteudoId, criadoEm])
+  @@index([workspaceId])
+  @@index([autorId])
+  @@index([resolvidoPorId])
 }
