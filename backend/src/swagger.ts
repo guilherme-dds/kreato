@@ -104,10 +104,10 @@ function authOp(op: {
 const schemas: Record<string, Schema> = {
   Error: obj({ error: str("Mensagem legível para exibir ao usuário", "Conteúdo não encontrado.") }, ["error"]),
   PlanLimitError: obj({
-    error: str(undefined, "Você atingiu o limite de 20 ideias ativas do seu plano."),
+    error: str(undefined, "Você atingiu o limite de 50 ideias ativas do seu plano."),
     code: enumOf(["PLAN_LIMIT_REACHED"]),
     resource: enumOf(["ideias", "conteudosAtivos", "armazenamentoMB", "historicoMetricasDias", "membros"]),
-    limit: int(undefined, 20),
+    limit: int(undefined, 50),
   }),
   CodedError: obj({
     error: str(),
@@ -142,9 +142,9 @@ const schemas: Record<string, Schema> = {
   UserMessage: obj({ user: ref("User"), message: str() }),
   Author: nullable(obj({ id: str(), nome: str(), fotoPerfil: nullable(str()) })),
   PlanLimits: obj({
-    ideias: nullable(int("null = ilimitado", 20)),
-    conteudosAtivos: nullable(int(undefined, 10)),
-    armazenamentoMB: nullable(int(undefined, 500)),
+    ideias: nullable(int("null = ilimitado", 50)),
+    conteudosAtivos: nullable(int(undefined, 15)),
+    armazenamentoMB: nullable(int(undefined, 100)),
     historicoMetricasDias: nullable(int(undefined, 30)),
     membros: nullable(int(undefined, 1)),
   }),
@@ -295,7 +295,7 @@ const schemas: Record<string, Schema> = {
         coletadoEm: dateTime(),
         criadoEm: dateTime(),
         registradoPor: nullable(obj({ id: str(), nome: str() })),
-        taxaEngajamento: nullable({ type: "number", description: "Interações ÷ visualizações (0 a 1)", example: 0.121 }),
+        taxaEngajamento: nullable({ type: "number", description: "Interações ÷ visualizações, em % (2 casas)", example: 12.1 }),
       }),
     ],
   },

@@ -42,24 +42,37 @@ O projeto é utilizado na disciplina de Introdução à Computação em Nuvem, c
 
 ## 🚀 Funcionalidades
 
-- **Autenticação & Sessão**: Cadastro de conta, login com geração de tokens JWT e Refresh Tokens persistentes no MySQL, encerramento de sessão e recuperação de senha.
-- **Foto de Perfil com MinIO (S3)**: Upload de foto de perfil pelo usuário com validação client-side e server-side de tipo de arquivo (`JPG`, `PNG`, `WEBP`, `GIF`) e tamanho máximo (até 5MB). O arquivo é armazenado no bucket `avatars` no MinIO e a referência da URL é salva no banco de dados.
-- **Página de Perfil do Usuário**: Painel para visualização da conta, upload/alteração/remoção da foto de perfil e edição de bio curta (até 250 caracteres).
-- **Auditoria de Eventos com Redis**: Microserviço de logs que consome eventos em tempo real (`XADD` / `XREAD`) via Redis Streams para auditoria de logins, logouts e exceções.
-- **Documentação de API OpenAPI/Swagger**: Interface Swagger interativa para o microserviço de autenticação.
+- **Banco de Ideias**: captura rápida com gancho, legenda, plataforma, tags e status, com filtros e busca; a ideia vira conteúdo no pipeline com um clique.
+- **Pipeline de Produção (Kanban)**: Ideia → Roteiro → Gravação → Edição → Agendado → Publicado, com arrastar e soltar e um editor dedicado para roteiro, legenda e hashtags.
+- **Revisão de Roteiro**: comentários por conteúdo, aprovação do roteiro e pedidos de ajuste feitos por gestores.
+- **Calendário Editorial**: grade mensal das publicações, com reagendamento arrastando o card.
+- **Anexos com MinIO (S3)**: arquivos brutos (vídeos, áudios, imagens, PDFs) ligados a cada conteúdo, no bucket `assets`.
+- **Métricas e Análise**: registro de visualizações, curtidas, comentários, compartilhamentos e salvamentos, taxa de engajamento e comparativos por plataforma e formato.
+- **Dashboard**: meta semanal de publicações, sequência de semanas cumpridas, agenda e destaques.
+- **Equipes e Workspaces**: convites por e-mail, papéis (Dono, Gestor, Roteirista, Editor) e troca entre workspaces.
+- **Planos e Assinatura (Stripe)**: Free, Creator e Studio, com Checkout, Customer Portal, webhooks e limites por plano.
+- **Painel Administrativo**: métricas da plataforma e eventos de segurança vindos do `log-service`.
+- **Autenticação & Sessão**: cadastro, login com JWT e Refresh Tokens no MySQL, logout e recuperação de senha por e-mail.
+- **Auditoria com Redis Streams**: eventos de uso e segurança enviados com `XADD` e consumidos pelo `log-service`.
+- **Documentação OpenAPI/Swagger**: Swagger UI para o backend (`/api/docs`), o `auth-service` e o `log-service`.
 
 ---
 
-## 🔒 Permissões por Tipo de Usuário (Roles)
+## 🔒 Permissões
 
-### Usuário Comum (`USER`)
-- **Foto de Perfil**: Realizar upload, alterar ou remover sua imagem de perfil armazenada no MinIO.
-- **Editar Bio**: Adicionar ou modificar sua bio curta no perfil.
-- **Sessão**: Criar conta, realizar login, renovar sessão, encerrar sessão e redefinir senha.
+### Role da conta
+- **`creator`** (padrão de todo cadastro): usa o Kreato nos workspaces dos quais participa.
+- **`admin`**: além disso, acessa o painel administrativo, as métricas da plataforma e os logs de auditoria. É atribuída diretamente no banco.
 
-### Administrador (`ADMIN`)
-Possui **todas as permissões do Usuário Comum (`USER`)**, com os seguintes privilégios adicionais:
-- **Auditoria de Logs**: Consulta aos registros de eventos do sistema via microserviço de logs.
+### Papel no workspace
+| Papel | O que pode fazer |
+|---|---|
+| **Dono** | Tudo, inclusive plano e assinatura; gerencia gestores |
+| **Gestor** | Gerencia conteúdos em todas as etapas, aprova roteiros, agenda e publica, convida roteiristas e editores |
+| **Roteirista** | Cria e escreve conteúdos nas etapas Ideia e Roteiro |
+| **Editor** | Move conteúdos entre Gravação e Edição |
+
+Todos os membros comentam, enviam anexos e registram métricas. Os limites de uso seguem o plano do dono do workspace.
 
 ---
 
@@ -237,24 +250,30 @@ docker compose up --build -d
 
 ## 🌐 Endpoints da API
 
-### Autenticação & Sessão (`auth-service`)
-- `POST /api/create`: Cadastra um novo usuário.
-- `POST /api/auth`: Realiza login, gera JWT e Refresh Token.
-- `POST /api/auth/refresh`: Renova o token de acesso JWT expirado.
-- `POST /api/auth/logout`: Invalida o token e encerra a sessão.
-- `POST /api/auth/reset`: Solicita redefinição de senha por e-mail.
-- `POST /api/auth/reset/confirm`: Confirma e altera a senha.
-- `GET /auth/apidocs`: Documentação interativa Swagger UI do `auth-service`.
+A referência completa, com corpos e respostas, está no Swagger de cada serviço. As regras de negócio estão em [`documentacao.md`](documentacao.md).
 
-### Perfil do Usuário & MinIO Avatar (`backend`)
-- `GET /api/user/profile`: Retorna o perfil completo do usuário autenticado.
-- `PUT /api/user/profile`: Atualiza nome e bio do usuário.
-- `POST /api/user/avatar`: Faz o upload da foto de perfil para o MinIO e salva a referência no MySQL.
-- `GET /api/user/avatar/:filename`: Serve a imagem de perfil armazenada no MinIO.
-- `DELETE /api/user/avatar`: Remove a foto de perfil do MinIO e limpa a referência no banco.
+### Autenticação & Sessão (`auth-service`) · Swagger em `/auth/apidocs`
+- `POST /api/create`: cadastra um novo usuário.
+- `POST /api/auth`: login; gera JWT e Refresh Token.
+- `POST /api/auth/refresh`: renova o JWT.
+- `POST /api/auth/logout`: encerra a sessão.
+- `POST /api/auth/reset` e `POST /api/auth/reset/confirm`: redefinição de senha por e-mail.
 
-### Auditoria de Logs (`log-service`)
-- `GET /api/logs`: Consulta o histórico de eventos e logs de auditoria via Redis Stream (`ADMIN`).
+### API principal (`backend`) · Swagger em `/api/docs`
+- **Perfil**: `GET/PUT /api/user/profile`, `POST/DELETE /api/user/avatar`, `GET /api/user/usage`.
+- **Workspaces e equipe**: `GET /api/workspaces`, `GET/PATCH /api/workspaces/current`, `GET /api/membros`, `PATCH/DELETE /api/membros/:id`, `POST /api/membros/sair`.
+- **Convites**: `GET/POST /api/convites`, `POST /api/convites/:id/reenviar`, `DELETE /api/convites/:id`, `GET /api/convites/token/:token`, `POST /api/convites/aceitar`.
+- **Ideias**: `GET/POST /api/ideias`, `GET/PATCH/DELETE /api/ideias/:id`, `POST /api/ideias/:id/converter`.
+- **Conteúdos**: `GET/POST /api/conteudos`, `GET/PATCH/DELETE /api/conteudos/:id`, `PATCH /api/conteudos/:id/etapa`.
+- **Revisão**: `GET/POST /api/conteudos/:id/comentarios`, `PATCH/DELETE /api/comentarios/:id`, `POST /api/conteudos/:id/aprovar-roteiro`, `POST /api/conteudos/:id/solicitar-ajustes`.
+- **Anexos**: `GET/POST /api/conteudos/:id/anexos`, `GET /api/anexos/:id/arquivo`, `DELETE /api/anexos/:id`.
+- **Métricas e dashboard**: `GET /api/metricas/resumo`, `GET/POST /api/conteudos/:id/metricas`, `DELETE /api/metricas/:id`, `GET /api/dashboard`.
+- **Planos (Stripe)**: `GET /api/stripe/plans`, `POST /api/stripe/create-checkout-session`, `POST /api/stripe/verify-session`, `POST /api/stripe/cancel`, `POST /api/stripe/webhook`.
+- **Admin**: `GET /api/admin/metricas` (role `admin`).
+
+### Auditoria (`log-service`) · Swagger em `/log/apidocs`
+- `GET /api/logs`: histórico de eventos do Redis Stream (role `admin`).
+- `GET /api/logs/stats?dias=30`: estatísticas de uso e segurança por dia (role `admin`).
 
 ---
 
