@@ -1,4 +1,5 @@
 import type { Request, Response } from "express";
+import { countActiveIdeas } from "../utils/usage.js";
 import type { Prisma } from "../generated/prisma/client.js";
 import prisma from "../utils/prisma.js";
 import { logEvent } from "../utils/logger.js";
@@ -96,10 +97,6 @@ function parseIdeaInput(body: unknown, partial: boolean): { data: IdeaInput } | 
   }
 
   return { data };
-}
-
-function countActiveIdeas(workspaceId: string) {
-  return prisma.ideia.count({ where: { workspaceId, status: { not: "ARQUIVADA" } } });
 }
 
 function rejectIdeaLimit(req: Request, res: Response, usage: number) {

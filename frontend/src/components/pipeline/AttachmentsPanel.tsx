@@ -67,7 +67,7 @@ interface AttachmentsPanelProps {
 
 export const AttachmentsPanel: React.FC<AttachmentsPanelProps> = ({ contentId }) => {
   const { token, user } = useAuth();
-  const { showToast, openPlansModal } = useLayoutContext();
+  const { showToast, openPlans } = useLayoutContext();
 
   const [attachments, setAttachments] = useState<Attachment[]>([]);
   const [usage, setUsage] = useState<StorageUsage | null>(null);
@@ -108,8 +108,8 @@ export const AttachmentsPanel: React.FC<AttachmentsPanelProps> = ({ contentId })
         continue;
       }
       if (usage && usedBytes + file.size > usage.limiteBytes) {
+        // Sem navegar: o editor pode ter alterações não salvas (o botão de upgrade da cota continua disponível)
         showToast("error", `Sem espaço para "${file.name}": o limite do seu plano é ${formatBytes(usage.limiteBytes)}.`);
-        openPlansModal();
         break;
       }
 
@@ -122,10 +122,7 @@ export const AttachmentsPanel: React.FC<AttachmentsPanelProps> = ({ contentId })
         setUsage(result.uso);
       } catch (err) {
         showToast("error", err instanceof Error ? err.message : `Erro ao enviar "${file.name}"`);
-        if (isPlanLimitError(err)) {
-          openPlansModal();
-          break;
-        }
+        if (isPlanLimitError(err)) break;
       } finally {
         setUploading((prev) => prev.filter((item) => item.id !== uploadId));
       }
@@ -282,7 +279,7 @@ export const AttachmentsPanel: React.FC<AttachmentsPanelProps> = ({ contentId })
             {formatBytes(usage.usadoBytes)} de {formatBytes(usage.limiteBytes)} usados no workspace
           </span>
           {usagePercent >= 75 && (
-            <button className="usage-bar-upgrade" onClick={openPlansModal}>
+            <button className="usage-bar-upgrade" onClick={() => openPlans()}>
               <Crown size={13} /> Mais espaço
             </button>
           )}

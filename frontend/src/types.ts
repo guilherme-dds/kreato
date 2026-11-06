@@ -306,3 +306,13 @@ export interface CheckoutResponse {
   user?: User;
   message?: string;
 }
+
+export type PlanResource = keyof PlanLimits;
+
+/** GET /user/usage — uso do workspace atual frente aos limites do plano do dono */
+export interface UsageResponse {
+  plano: Plan;
+  limites: PlanLimits;
+  uso: { ideias: number; conteudosAtivos: number; armazenamentoBytes: number; membros: number };
+  workspace: { id: string; nome: string; pessoal: boolean; souDono: boolean; nomeDono: string };
+}

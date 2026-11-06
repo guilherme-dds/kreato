@@ -7,7 +7,7 @@ import { NewContentModal } from "../components/pipeline/NewContentModal";
 import { ScheduleDialog } from "../components/pipeline/ScheduleDialog";
 import { useAuth } from "../context/AuthContext";
 import { useLayoutContext } from "../layouts/layoutContext";
-import { getContentsApi, isPlanLimitError, moveContentApi } from "../api/backend";
+import { getContentsApi, isPlanLimitError, planLimitResource, moveContentApi } from "../api/backend";
 import type { Content, ContentMoveInput, ContentStage, Platform } from "../types";
 import {
   CONTENT_STAGES,
@@ -56,7 +56,7 @@ function applyMove(list: Content[], id: number, stage: ContentStage, index: numb
 
 export const PipelinePage: React.FC = () => {
   const { token } = useAuth();
-  const { showToast, openPlansModal } = useLayoutContext();
+  const { showToast, openPlans } = useLayoutContext();
 
   const [contents, setContents] = useState<Content[]>([]);
   const [limit, setLimit] = useState<number | null>(null);
@@ -153,7 +153,7 @@ export const PipelinePage: React.FC = () => {
     } catch (err) {
       setContents(snapshot);
       showToast("error", err instanceof Error ? err.message : "Erro ao mover conteúdo");
-      if (isPlanLimitError(err)) openPlansModal();
+      if (isPlanLimitError(err)) openPlans(planLimitResource(err));
     } finally {
       setBusy(content.id, false);
     }
@@ -240,7 +240,7 @@ export const PipelinePage: React.FC = () => {
           limit={limit}
           label="conteúdos em produção no plano Gratuito"
           upgradeLabel="Produção ilimitada no Creator"
-          onUpgrade={openPlansModal}
+          onUpgrade={() => openPlans()}
         />
       )}
 

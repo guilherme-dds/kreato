@@ -11,6 +11,7 @@ import { getPlanLimits, rejectPlanLimit } from "../utils/plans.js";
 import { canManageWorkspace } from "../utils/workspaces.js";
 import { parsePositiveInt } from "../utils/request.js";
 import { deleteAssets, getAssetStream, uploadAssetFromFile } from "../utils/minio.js";
+import { countStorageBytes } from "../utils/usage.js";
 
 const MB = 1024 * 1024;
 export const MAX_ATTACHMENT_MB = 100;
@@ -72,12 +73,8 @@ const attachmentSelect = {
 } satisfies Prisma.AnexoSelect;
 
 async function storageUsage(req: Request) {
-  const result = await prisma.anexo.aggregate({
-    where: { workspaceId: req.workspaceId },
-    _sum: { tamanhoBytes: true },
-  });
   return {
-    usadoBytes: result._sum.tamanhoBytes ?? 0,
+    usadoBytes: await countStorageBytes(req.workspaceId),
     limiteBytes: getPlanLimits(req.workspacePlan).armazenamentoMB * MB,
   };
 }

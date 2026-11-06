@@ -1,10 +1,10 @@
 import React, { Suspense, lazy, useState, useCallback } from "react";
 import { BrowserRouter, Navigate, Route, Routes, useLocation, useNavigate, type Location } from "react-router-dom";
-import { RefreshCw, Crown } from "lucide-react";
+import { RefreshCw } from "lucide-react";
 import { AuthProvider, useAuth } from "./context/AuthContext";
 
 import { AppLayout } from "./layouts/AppLayout";
-import { useLayoutContext, type ShowToast } from "./layouts/layoutContext";
+import type { ShowToast } from "./layouts/layoutContext";
 import { AuthPage } from "./components/AuthPage";
 import { ResetPasswordPage } from "./components/ResetPasswordPage";
 import { Toast, type ToastMessage } from "./components/Toast";
@@ -14,6 +14,7 @@ import { ComingSoonPage } from "./pages/ComingSoonPage";
 import { IdeasPage } from "./pages/IdeasPage";
 import { PipelinePage } from "./pages/PipelinePage";
 import { CalendarPage } from "./pages/CalendarPage";
+import { PlansPage } from "./pages/PlansPage";
 import { MAIN_NAV } from "./navigation";
 
 // Páginas com gráficos (recharts) carregam sob demanda para não pesar o bundle inicial
@@ -59,21 +60,6 @@ const PublicOnly: React.FC<{ children: React.ReactElement }> = ({ children }) =>
   return children;
 };
 
-const PlansPlaceholder: React.FC = () => {
-  const { openPlansModal } = useLayoutContext();
-  return (
-    <ComingSoonPage
-      icon={Crown}
-      title="Planos"
-      description="Compare os planos Gratuito, Kreato Creator e Kreato Studio."
-    >
-      <button className="btn btn-primary" onClick={openPlansModal}>
-        Ver planos Creator e Studio
-      </button>
-    </ComingSoonPage>
-  );
-};
-
 const AppRoutes: React.FC<{ showToast: ShowToast }> = ({ showToast }) => {
   const navigate = useNavigate();
   // Módulos já implementados têm rota própria; os demais exibem "em breve"
@@ -115,7 +101,7 @@ const AppRoutes: React.FC<{ showToast: ShowToast }> = ({ showToast }) => {
             element={<ComingSoonPage icon={item.icon} title={item.label} description={item.description} />}
           />
         ))}
-        <Route path="planos" element={<PlansPlaceholder />} />
+        <Route path="planos" element={<PlansPage />} />
         <Route path="perfil" element={<ProfilePage />} />
       </Route>
 

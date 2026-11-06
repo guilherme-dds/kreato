@@ -59,6 +59,10 @@ router.get("/api/user/avatar/:filename", (req, res) => usercontroller.serveAvata
 router.delete("/user/avatar", AuthMiddleware, (req, res) => usercontroller.removeAvatar(req, res));
 router.delete("/api/user/avatar", AuthMiddleware, (req, res) => usercontroller.removeAvatar(req, res));
 
+// Plan usage of the current workspace (limits come from the workspace owner's plan)
+router.get("/user/usage", AuthMiddleware, WorkspaceMiddleware, (req, res) => workspaceController.usage(req, res));
+router.get("/api/user/usage", AuthMiddleware, WorkspaceMiddleware, (req, res) => workspaceController.usage(req, res));
+
 // Workspace Routes
 router.get("/workspaces", AuthMiddleware, (req, res) => workspaceController.index(req, res));
 router.get("/api/workspaces", AuthMiddleware, (req, res) => workspaceController.index(req, res));

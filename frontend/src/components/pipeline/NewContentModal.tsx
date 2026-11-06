@@ -2,7 +2,7 @@ import React, { useEffect, useState } from "react";
 import { SquareKanban, X } from "lucide-react";
 import { useAuth } from "../../context/AuthContext";
 import { useLayoutContext } from "../../layouts/layoutContext";
-import { createContentApi, isPlanLimitError } from "../../api/backend";
+import { createContentApi, isPlanLimitError, planLimitResource } from "../../api/backend";
 import type { ContentDetail, ContentFormat, ContentStage, Platform } from "../../types";
 import {
   CONTENT_FORMATS,
@@ -21,7 +21,7 @@ interface NewContentModalProps {
 
 export const NewContentModal: React.FC<NewContentModalProps> = ({ initialStage, onClose, onCreated }) => {
   const { token } = useAuth();
-  const { showToast, openPlansModal } = useLayoutContext();
+  const { showToast, openPlans } = useLayoutContext();
 
   const [titulo, setTitulo] = useState("");
   const [etapa, setEtapa] = useState<ContentStage>(initialStage);
@@ -62,7 +62,7 @@ export const NewContentModal: React.FC<NewContentModalProps> = ({ initialStage, 
       if (isPlanLimitError(err)) {
         showToast("error", message);
         onClose();
-        openPlansModal();
+        openPlans(planLimitResource(err));
         return;
       }
       setFormError(message);

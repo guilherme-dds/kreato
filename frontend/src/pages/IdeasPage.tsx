@@ -23,7 +23,7 @@ import {
   convertIdeaApi,
   deleteIdeaApi,
   getIdeasApi,
-  isPlanLimitError,
+  isPlanLimitError, planLimitResource,
   updateIdeaApi,
 } from "../api/backend";
 import type { Idea, IdeaStatus, IdeasResponse, Platform } from "../types";
@@ -42,7 +42,7 @@ const SEARCH_DEBOUNCE_MS = 350;
 
 export const IdeasPage: React.FC = () => {
   const { token, user } = useAuth();
-  const { showToast, openPlansModal } = useLayoutContext();
+  const { showToast, openPlans } = useLayoutContext();
   const navigate = useNavigate();
 
   const [status, setStatus] = useState<StatusTab>("");
@@ -118,7 +118,7 @@ export const IdeasPage: React.FC = () => {
         return;
       }
       showToast("error", err instanceof Error ? err.message : "Erro ao levar ideia para o pipeline");
-      if (isPlanLimitError(err)) openPlansModal();
+      if (isPlanLimitError(err)) openPlans(planLimitResource(err));
     } finally {
       setBusyId(null);
     }
@@ -133,7 +133,7 @@ export const IdeasPage: React.FC = () => {
       await loadIdeas();
     } catch (err) {
       showToast("error", err instanceof Error ? err.message : "Erro ao atualizar ideia");
-      if (isPlanLimitError(err)) openPlansModal();
+      if (isPlanLimitError(err)) openPlans(planLimitResource(err));
     } finally {
       setBusyId(null);
     }
@@ -183,7 +183,7 @@ export const IdeasPage: React.FC = () => {
           limit={uso.limite}
           label="ideias ativas no plano Gratuito"
           upgradeLabel="Ideias ilimitadas no Creator"
-          onUpgrade={openPlansModal}
+          onUpgrade={() => openPlans()}
         />
       )}
 

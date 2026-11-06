@@ -22,7 +22,7 @@ import {
 } from "../api/backend";
 
 export const ProfilePage: React.FC = () => {
-  const { showToast, openPlansModal: openPremiumModal } = useLayoutContext();
+  const { showToast, openPlans } = useLayoutContext();
   const { user, token, updateUser } = useAuth();
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -235,8 +235,8 @@ export const ProfilePage: React.FC = () => {
                   <h4><Crown size={16} className="gold-text" /> Você é assinante do {PLAN_LABELS[plan]}</h4>
                   <p>Todos os recursos de organização desbloqueados.</p>
                 </div>
-                {openPremiumModal && (
-                  <button className="btn btn-sm btn-manage-plan" onClick={openPremiumModal}>
+                {openPlans && (
+                  <button className="btn btn-sm btn-manage-plan" onClick={() => openPlans()}>
                     Gerenciar Assinatura
                   </button>
                 )}
@@ -247,8 +247,8 @@ export const ProfilePage: React.FC = () => {
                   <h4>Plano Gratuito Ativo</h4>
                   <p>Funcionalidades básicas com limites de uso.</p>
                 </div>
-                {openPremiumModal && (
-                  <button className="btn btn-sm btn-upgrade-gold" onClick={openPremiumModal}>
+                {openPlans && (
+                  <button className="btn btn-sm btn-upgrade-gold" onClick={() => openPlans()}>
                     <Sparkles size={14} /> Ver planos Creator e Studio
                   </button>
                 )}

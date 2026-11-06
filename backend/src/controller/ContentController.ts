@@ -1,4 +1,5 @@
 import type { Request, Response } from "express";
+import { countActiveContents } from "../utils/usage.js";
 import { Prisma } from "../generated/prisma/client.js";
 import prisma from "../utils/prisma.js";
 import { logEvent } from "../utils/logger.js";
@@ -146,10 +147,6 @@ function resolvePublicationDate(
 
 function badRequest(res: Response, parsed: { error: string; code?: string }) {
   return res.status(400).json(parsed.code ? { error: parsed.error, code: parsed.code } : { error: parsed.error });
-}
-
-function countActiveContents(workspaceId: string) {
-  return prisma.conteudo.count({ where: { workspaceId, etapa: { not: FINAL_STAGE } } });
 }
 
 function rejectContentLimit(req: Request, res: Response, usage: number) {

@@ -1,5 +1,7 @@
 import type {
   User,
+  PlanResource,
+  UsageResponse,
   BillingPlansResponse,
   CheckoutResponse,
   PaidPlan,
@@ -45,6 +47,15 @@ export class ApiError extends Error {
 
 export function isPlanLimitError(error: unknown): boolean {
   return error instanceof ApiError && (error.code === "PLAN_LIMIT_REACHED" || error.code === "PLAN_REQUIRED");
+}
+
+const PLAN_RESOURCES: PlanResource[] = ["ideias", "conteudosAtivos", "armazenamentoMB", "historicoMetricasDias", "membros"];
+
+/** Recurso cujo limite foi atingido (vem no corpo do PLAN_LIMIT_REACHED) */
+export function planLimitResource(error: unknown): PlanResource | undefined {
+  if (!(error instanceof ApiError)) return undefined;
+  const resource = error.data.resource;
+  return PLAN_RESOURCES.find((item) => item === resource);
 }
 
 export function getApiBaseUrl(): string {
@@ -305,6 +316,10 @@ export async function removeUserAvatarApi(token?: string | null): Promise<User> 
 /* ==========================================================================
    STRIPE & PREMIUM SUBSCRIPTION API
    ========================================================================== */
+
+export async function getUsageApi(token?: string | null): Promise<UsageResponse> {
+  return fetchWithAuth<UsageResponse>("/user/usage", {}, token, "Erro ao carregar o uso do plano");
+}
 
 export async function getBillingPlansApi(token?: string | null): Promise<BillingPlansResponse> {
   return fetchWithAuth<BillingPlansResponse>("/stripe/plans", {}, token, "Erro ao carregar os planos");

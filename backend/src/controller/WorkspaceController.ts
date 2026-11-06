@@ -4,6 +4,7 @@ import { logEvent } from "../utils/logger.js";
 import { normalizePlan, serializePlanLimits } from "../utils/plans.js";
 import { canManageWorkspace, ensurePersonalWorkspace, normalizeWorkspaceRole } from "../utils/workspaces.js";
 import { MAX_WEEKLY_GOAL, MIN_WEEKLY_GOAL, parseWeeklyGoal } from "../utils/goals.js";
+import { countActiveContents, countActiveIdeas, countMembers, countStorageBytes } from "../utils/usage.js";
 
 export class WorkspaceController {
   /**
@@ -87,6 +88,44 @@ export class WorkspaceController {
     } catch (error: any) {
       console.error("Erro ao buscar workspace atual:", error);
       return res.status(500).json({ error: "Erro ao buscar workspace." });
+    }
+  }
+
+  /**
+   * GET /user/usage — uso do workspace atual frente aos limites do plano.
+   * Os limites são os do plano do dono do workspace (quem paga), não necessariamente os do usuário.
+   */
+  async usage(req: Request, res: Response) {
+    try {
+      const workspaceId = req.workspaceId;
+      const [workspace, ideias, conteudosAtivos, armazenamentoBytes, membros] = await Promise.all([
+        prisma.workspace.findUnique({
+          where: { id: workspaceId },
+          select: { id: true, nome: true, donoId: true, pessoalDoUsuarioId: true, dono: { select: { nome: true } } },
+        }),
+        countActiveIdeas(workspaceId),
+        countActiveContents(workspaceId),
+        countStorageBytes(workspaceId),
+        countMembers(workspaceId),
+      ]);
+
+      if (!workspace) return res.status(404).json({ error: "Workspace não encontrado." });
+
+      return res.json({
+        plano: req.workspacePlan,
+        limites: serializePlanLimits(req.workspacePlan),
+        uso: { ideias, conteudosAtivos, armazenamentoBytes, membros },
+        workspace: {
+          id: workspace.id,
+          nome: workspace.nome,
+          pessoal: workspace.pessoalDoUsuarioId === req.userId,
+          souDono: workspace.donoId === req.userId,
+          nomeDono: workspace.dono.nome,
+        },
+      });
+    } catch (error: any) {
+      console.error("Erro ao calcular uso do plano:", error);
+      return res.status(500).json({ error: "Erro ao carregar o uso do plano." });
     }
   }
 

@@ -43,7 +43,7 @@ interface MetricsPanelProps {
 /** Métricas de um conteúdo publicado: registro manual dos números e evolução ao longo do tempo */
 export const MetricsPanel: React.FC<MetricsPanelProps> = ({ contentId, stage }) => {
   const { token, user } = useAuth();
-  const { showToast, openPlansModal } = useLayoutContext();
+  const { showToast, openPlans } = useLayoutContext();
 
   const [data, setData] = useState<ContentMetricsResponse | null>(null);
   const [isLoading, setIsLoading] = useState(false);
@@ -314,7 +314,7 @@ export const MetricsPanel: React.FC<MetricsPanelProps> = ({ contentId, stage }) 
           <span>
             {data.historico.ocultas} medições com mais de {data.historico.dias} dias estão ocultas no plano Gratuito.
           </span>
-          <button className="usage-bar-upgrade" onClick={openPlansModal}>
+          <button className="usage-bar-upgrade" onClick={() => openPlans()}>
             <Crown size={14} /> Ver histórico completo
           </button>
         </div>

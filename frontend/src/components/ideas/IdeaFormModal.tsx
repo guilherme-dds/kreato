@@ -2,7 +2,7 @@ import React, { useEffect, useState } from "react";
 import { Lightbulb, X } from "lucide-react";
 import { useAuth } from "../../context/AuthContext";
 import { useLayoutContext } from "../../layouts/layoutContext";
-import { createIdeaApi, isPlanLimitError, updateIdeaApi } from "../../api/backend";
+import { createIdeaApi, isPlanLimitError, planLimitResource, updateIdeaApi } from "../../api/backend";
 import type { Idea, IdeaInput, IdeaStatus, Platform } from "../../types";
 import { IDEA_STATUSES, IDEA_STATUS_LABELS, PLATFORMS, PLATFORM_LABELS, parseTagsInput } from "../../utils/content";
 
@@ -21,7 +21,7 @@ interface IdeaFormModalProps {
 
 export const IdeaFormModal: React.FC<IdeaFormModalProps> = ({ idea, onClose, onSaved }) => {
   const { token } = useAuth();
-  const { showToast, openPlansModal } = useLayoutContext();
+  const { showToast, openPlans } = useLayoutContext();
   const isEditing = idea !== null;
 
   const [titulo, setTitulo] = useState(idea?.titulo ?? "");
@@ -71,7 +71,7 @@ export const IdeaFormModal: React.FC<IdeaFormModalProps> = ({ idea, onClose, onS
       if (isPlanLimitError(err)) {
         showToast("error", message);
         onClose();
-        openPlansModal();
+        openPlans(planLimitResource(err));
         return;
       }
       setFormError(message);

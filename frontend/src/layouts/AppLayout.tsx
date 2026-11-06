@@ -5,10 +5,10 @@ import { useAuth } from "../context/AuthContext";
 import { getUserProfileApi, verifyStripeSessionApi } from "../api/backend";
 import { KreatoLogo } from "../components/KreatoLogo";
 import { PremiumBadge } from "../components/PremiumBadge";
-import { PremiumModal } from "../components/PremiumModal";
 import { MAIN_NAV } from "../navigation";
 import { PLAN_LABELS, getUserPlan, hasPlanAtLeast, isPaidPlan } from "../utils/plans";
 import type { LayoutContext, ShowToast } from "./layoutContext";
+import type { PlanResource } from "../types";
 
 interface AppLayoutProps {
   showToast: ShowToast;
@@ -20,14 +20,16 @@ export const AppLayout: React.FC<AppLayoutProps> = ({ showToast }) => {
   const navigate = useNavigate();
 
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
-  const [isPlansModalOpen, setIsPlansModalOpen] = useState(false);
   const handledStripeSearch = useRef<string | null>(null);
 
   const plan = getUserPlan(user);
   const isPaid = isPaidPlan(user);
   const userName = user?.nome || (user?.email ? user.email.split("@")[0] : "Criador");
 
-  const openPlansModal = useCallback(() => setIsPlansModalOpen(true), []);
+  const openPlans = useCallback(
+    (reason?: PlanResource) => navigate("/planos", reason ? { state: { motivo: reason } } : undefined),
+    [navigate]
+  );
 
   // Fecha o menu lateral (mobile) ao trocar de página
   useEffect(() => {
@@ -141,7 +143,7 @@ export const AppLayout: React.FC<AppLayoutProps> = ({ showToast }) => {
               <span>{isPaid ? PLAN_LABELS[plan] : "Plano Gratuito"}</span>
             </div>
             <p>{isPaid ? "Todos os recursos de organização liberados." : "Desbloqueie ideias e conteúdos ilimitados."}</p>
-            <button className="sidebar-plan-btn" onClick={openPlansModal}>
+            <NavLink to="/planos" className="sidebar-plan-btn">
               {isPaid ? (
                 "Gerenciar plano"
               ) : (
@@ -149,7 +151,7 @@ export const AppLayout: React.FC<AppLayoutProps> = ({ showToast }) => {
                   <Sparkles size={14} /> Fazer upgrade
                 </>
               )}
-            </button>
+            </NavLink>
           </div>
 
           {/* User */}
@@ -179,11 +181,10 @@ export const AppLayout: React.FC<AppLayoutProps> = ({ showToast }) => {
       {/* Page Content */}
       <main className="app-main">
         <div className="app-main-inner">
-          <Outlet context={{ showToast, openPlansModal } satisfies LayoutContext} />
+          <Outlet context={{ showToast, openPlans } satisfies LayoutContext} />
         </div>
       </main>
 
-      <PremiumModal isOpen={isPlansModalOpen} onClose={() => setIsPlansModalOpen(false)} showToast={showToast} />
     </div>
   );
 };

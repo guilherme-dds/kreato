@@ -109,7 +109,7 @@ const StatTile: React.FC<{ icon: React.ReactNode; label: string; value: string; 
 
 export const AnalyticsPage: React.FC = () => {
   const { token } = useAuth();
-  const { openPlansModal } = useLayoutContext();
+  const { openPlans } = useLayoutContext();
 
   const [days, setDays] = useState(30);
   const [plataforma, setPlataforma] = useState<Platform | "">("");
@@ -218,7 +218,7 @@ export const AnalyticsPage: React.FC = () => {
           <span>
             O plano Gratuito mostra os últimos {summary.periodo.historicoDias} dias de métricas.
           </span>
-          <button className="usage-bar-upgrade" onClick={openPlansModal}>
+          <button className="usage-bar-upgrade" onClick={() => openPlans()}>
             <Crown size={14} /> Histórico completo no Creator
           </button>
         </div>

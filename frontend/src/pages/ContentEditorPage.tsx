@@ -5,7 +5,7 @@ import { useAuth } from "../context/AuthContext";
 import { useLayoutContext } from "../layouts/layoutContext";
 import { AttachmentsPanel } from "../components/pipeline/AttachmentsPanel";
 import { MetricsPanel } from "../components/pipeline/MetricsPanel";
-import { deleteContentApi, getContentApi, isPlanLimitError, moveContentApi, updateContentApi } from "../api/backend";
+import { deleteContentApi, getContentApi, isPlanLimitError, planLimitResource, moveContentApi, updateContentApi } from "../api/backend";
 import type { ContentDetail, ContentFormat, ContentStage, Platform } from "../types";
 import {
   CONTENT_FORMATS,
@@ -73,7 +73,7 @@ export const ContentEditorPage: React.FC = () => {
   const contentId = Number(id);
   const navigate = useNavigate();
   const { token } = useAuth();
-  const { showToast, openPlansModal } = useLayoutContext();
+  const { showToast, openPlans } = useLayoutContext();
 
   const [content, setContent] = useState<ContentDetail | null>(null);
   const [form, setForm] = useState<EditorForm | null>(null);
@@ -194,7 +194,8 @@ export const ContentEditorPage: React.FC = () => {
       showToast("success", stage === "PUBLICADO" ? "Conteúdo publicado! 🎉" : `Movido para ${CONTENT_STAGE_LABELS[stage]}.`);
     } catch (err) {
       showToast("error", err instanceof Error ? err.message : "Erro ao mudar etapa");
-      if (isPlanLimitError(err)) openPlansModal();
+      // Com alterações não salvas, fica no editor: o toast já explica o limite
+      if (isPlanLimitError(err) && !isDirty) openPlans(planLimitResource(err));
     } finally {
       setIsMoving(false);
     }
