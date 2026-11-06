@@ -215,3 +215,54 @@ export interface MetricsSummaryFilters {
   plataforma?: Platform | "";
 }
 
+
+/* ==========================================================================
+   CREATOR DASHBOARD
+   ========================================================================== */
+export interface WeekProgress {
+  inicio: string;
+  publicados: number;
+  atingiu: boolean;
+}
+
+export interface WeeklyGoal {
+  meta: number;
+  inicioSemana: string;
+  fimSemana: string;
+  publicadosSemana: number;
+  semanaAtualConcluida: boolean;
+  /** Semanas consecutivas com a meta cumprida (a atual só conta depois de cumprida) */
+  sequencia: number;
+  /** Últimas 8 semanas, da mais antiga para a atual */
+  semanas: WeekProgress[];
+  podeEditar: boolean;
+}
+
+export interface DashboardAgendaItem {
+  id: number;
+  titulo: string;
+  etapa: ContentStage;
+  plataforma: Platform | null;
+  formato: ContentFormat | null;
+  dataPublicacao: string;
+}
+
+export interface DashboardData {
+  meta: WeeklyGoal;
+  pipeline: { porEtapa: Record<Exclude<ContentStage, "PUBLICADO">, number>; ativos: number };
+  agenda: { atrasados: DashboardAgendaItem[]; totalAtrasados: number; proximos: DashboardAgendaItem[]; dias: number };
+  ideias: { novas: number; recentes: { id: number; titulo: string; plataforma: Platform | null; criadoEm: string }[] };
+  desempenho: {
+    dias: number;
+    totais: MetricTotals;
+    destaque: {
+      id: number;
+      titulo: string;
+      plataforma: Platform | null;
+      formato: ContentFormat | null;
+      dataPublicacao: string | null;
+      visualizacoes: number;
+      taxaEngajamento: number | null;
+    } | null;
+  };
+}

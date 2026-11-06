@@ -56,6 +56,8 @@ model Workspace {
   donoId             String   @db.VarChar(36)
   // Preenchido apenas no workspace pessoal (= donoId), garantindo um único por usuário
   pessoalDoUsuarioId String?  @unique @db.VarChar(36)
+  // Meta de publicações por semana (segunda a domingo), usada na sequência do dashboard
+  metaSemanal        Int      @default(3)
   criadoEm           DateTime @default(now())
 
   dono      Usuario           @relation("WorkspaceDono", fields: [donoId], references: [id], onDelete: Cascade)

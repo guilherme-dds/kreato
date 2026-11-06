@@ -7,6 +7,7 @@ import { IdeaController } from "./controller/IdeaController.js";
 import { ContentController } from "./controller/ContentController.js";
 import { AttachmentController, attachmentUpload } from "./controller/AttachmentController.js";
 import { MetricController } from "./controller/MetricController.js";
+import { DashboardController } from "./controller/DashboardController.js";
 import { AuthMiddleware } from "./middlewares/auth.js";
 import { WorkspaceMiddleware, requireWorkspaceRole } from "./middlewares/workspace.js";
 
@@ -24,6 +25,7 @@ const ideaController = new IdeaController();
 const contentController = new ContentController();
 const attachmentController = new AttachmentController();
 const metricController = new MetricController();
+const dashboardController = new DashboardController();
 
 export const router = Router();
 
@@ -78,6 +80,10 @@ router.patch(
   requireWorkspaceRole("DONO", "GESTOR"),
   (req, res) => workspaceController.updateCurrent(req, res)
 );
+
+// Creator Dashboard (weekly goal, pipeline, agenda, ideas and recent performance)
+router.get("/dashboard", AuthMiddleware, WorkspaceMiddleware, (req, res) => dashboardController.show(req, res));
+router.get("/api/dashboard", AuthMiddleware, WorkspaceMiddleware, (req, res) => dashboardController.show(req, res));
 
 // Ideas Routes (scoped to the current workspace)
 router.get("/ideias", AuthMiddleware, WorkspaceMiddleware, (req, res) => ideaController.index(req, res));

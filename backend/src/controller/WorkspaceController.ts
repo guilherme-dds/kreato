@@ -3,6 +3,7 @@ import prisma from "../utils/prisma.js";
 import { logEvent } from "../utils/logger.js";
 import { normalizePlan, serializePlanLimits } from "../utils/plans.js";
 import { canManageWorkspace, ensurePersonalWorkspace, normalizeWorkspaceRole } from "../utils/workspaces.js";
+import { MAX_WEEKLY_GOAL, MIN_WEEKLY_GOAL, parseWeeklyGoal } from "../utils/goals.js";
 
 export class WorkspaceController {
   /**
@@ -58,6 +59,7 @@ export class WorkspaceController {
           nome: true,
           donoId: true,
           pessoalDoUsuarioId: true,
+          metaSemanal: true,
           criadoEm: true,
           _count: { select: { membros: true } },
         },
@@ -73,6 +75,7 @@ export class WorkspaceController {
           nome: workspace.nome,
           donoId: workspace.donoId,
           pessoal: workspace.pessoalDoUsuarioId === req.userId,
+          metaSemanal: workspace.metaSemanal,
           criadoEm: workspace.criadoEm,
           totalMembros: workspace._count.membros,
           papel: req.workspaceRole,
@@ -88,21 +91,40 @@ export class WorkspaceController {
   }
 
   /**
-   * Renomeia o workspace atual (apenas DONO ou GESTOR)
+   * Atualiza o workspace atual (apenas DONO ou GESTOR).
+   * Corpo: { nome?, metaSemanal? } — ao menos um dos campos.
    */
   async updateCurrent(req: Request, res: Response) {
     try {
-      const { nome } = req.body || {};
-      const trimmedName = typeof nome === "string" ? nome.trim() : "";
+      const { nome, metaSemanal } = req.body || {};
+      const data: { nome?: string; metaSemanal?: number } = {};
 
-      if (trimmedName.length === 0 || trimmedName.length > 100) {
-        return res.status(400).json({ error: "O nome do workspace deve ter entre 1 e 100 caracteres." });
+      if (nome !== undefined) {
+        const trimmedName = typeof nome === "string" ? nome.trim() : "";
+        if (trimmedName.length === 0 || trimmedName.length > 100) {
+          return res.status(400).json({ error: "O nome do workspace deve ter entre 1 e 100 caracteres." });
+        }
+        data.nome = trimmedName;
+      }
+
+      if (metaSemanal !== undefined) {
+        const goal = parseWeeklyGoal(metaSemanal);
+        if (goal === null) {
+          return res.status(400).json({
+            error: `A meta semanal deve ser um número inteiro entre ${MIN_WEEKLY_GOAL} e ${MAX_WEEKLY_GOAL}.`,
+          });
+        }
+        data.metaSemanal = goal;
+      }
+
+      if (Object.keys(data).length === 0) {
+        return res.status(400).json({ error: "Informe o nome ou a meta semanal." });
       }
 
       const workspace = await prisma.workspace.update({
         where: { id: req.workspaceId },
-        data: { nome: trimmedName },
-        select: { id: true, nome: true },
+        data,
+        select: { id: true, nome: true, metaSemanal: true },
       });
 
       await logEvent({
@@ -111,7 +133,7 @@ export class WorkspaceController {
         req,
         entidade: "workspace",
         entidadeId: workspace.id,
-        detalhes: { nome: workspace.nome },
+        detalhes: data,
       });
 
       return res.json({ workspace, message: "Workspace atualizado com sucesso." });

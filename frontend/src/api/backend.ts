@@ -1,5 +1,6 @@
 import type {
   User,
+  DashboardData,
   AuthResponse,
   RefreshTokenResponse,
   Idea,
@@ -505,4 +506,29 @@ export async function createMetricApi(contentId: number, input: MetricInput, tok
 
 export async function deleteMetricApi(metricId: number, token?: string | null): Promise<void> {
   await fetchWithAuth<void>(`/metricas/${metricId}`, { method: "DELETE" }, token, "Erro ao excluir métrica");
+}
+
+/* ==========================================================================
+   CREATOR DASHBOARD (workspace atual)
+   ========================================================================== */
+/** Segunda-feira 00:00 no fuso do navegador: a semana da meta segue o calendário do criador */
+export function localWeekStart(now = new Date()): Date {
+  const start = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  start.setDate(start.getDate() - ((start.getDay() + 6) % 7));
+  return start;
+}
+
+export async function getDashboardApi(token?: string | null): Promise<DashboardData> {
+  const query = toQueryString({ inicioSemana: localWeekStart().toISOString() });
+  return fetchWithAuth<DashboardData>(`/dashboard${query}`, {}, token, "Erro ao carregar o painel");
+}
+
+export async function updateWeeklyGoalApi(metaSemanal: number, token?: string | null): Promise<number> {
+  const data = await fetchWithAuth<{ workspace: { metaSemanal: number } }>(
+    "/workspaces/current",
+    { method: "PATCH", body: JSON.stringify({ metaSemanal }) },
+    token,
+    "Erro ao atualizar a meta semanal"
+  );
+  return data.workspace.metaSemanal;
 }
