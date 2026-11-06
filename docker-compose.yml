@@ -138,3 +138,12 @@ services:
 
 volumes:
   minio-data:
+
+# Sub-rede fixa: hosts com muitas stacks esgotam os pools automáticos do Docker
+# ("all predefined address pools have been fully subnetted"). Se a faixa colidir
+# com outra rede do servidor, defina KREATO_SUBNET nas variáveis da stack.
+networks:
+  default:
+    ipam:
+      config:
+        - subnet: ${KREATO_SUBNET:-10.209.0.0/24}
