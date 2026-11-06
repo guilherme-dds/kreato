@@ -14,12 +14,19 @@ import type {
   IdeaInput,
   IdeasResponse,
   ContentCreateInput,
+  AssignableRole,
   ContentComment,
   ContentDetail,
   ContentFilters,
   ContentInput,
   ContentMoveInput,
   ContentsResponse,
+  Invite,
+  InviteDelivery,
+  InvitePreview,
+  TeamMember,
+  TeamResponse,
+  WorkspaceSummary,
   Attachment,
   AttachmentsResponse,
   StorageUsage,
@@ -68,6 +75,49 @@ export function getApiBaseUrl(): string {
 }
 
 const API_BASE_URL = getApiBaseUrl();
+
+/* ==========================================================================
+   WORKSPACE SELECIONADO (enviado no header X-Workspace-Id)
+   ========================================================================== */
+
+const WORKSPACE_STORAGE_KEY = "kreato_workspace";
+
+function storedUserId(): string | null {
+  try {
+    return JSON.parse(localStorage.getItem("auth_user") || "null")?.id ?? null;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Workspace escolhido no seletor. A escolha fica vinculada ao usuário: se outra conta entrar
+ * no mesmo navegador, ela começa no próprio workspace pessoal. null = workspace pessoal (sem header).
+ */
+export function getSelectedWorkspaceId(): string | null {
+  try {
+    const saved = JSON.parse(localStorage.getItem(WORKSPACE_STORAGE_KEY) || "null");
+    if (!saved || typeof saved.workspaceId !== "string") return null;
+    return saved.userId === storedUserId() ? saved.workspaceId : null;
+  } catch {
+    return null;
+  }
+}
+
+export function setSelectedWorkspaceId(workspaceId: string | null): void {
+  try {
+    if (workspaceId) {
+      localStorage.setItem(WORKSPACE_STORAGE_KEY, JSON.stringify({ userId: storedUserId(), workspaceId }));
+    } else {
+      localStorage.removeItem(WORKSPACE_STORAGE_KEY);
+    }
+  } catch {
+    // Sem storage disponível: segue no workspace pessoal
+  }
+}
+
+/** Disparado quando o servidor recusa o workspace salvo (ex.: a pessoa foi removida da equipe) */
+export const WORKSPACE_LOST_EVENT = "workspace:lost";
 
 async function parseResponse<T>(response: Response, defaultErrorMessage: string): Promise<T> {
   const text = await response.text();
@@ -210,6 +260,11 @@ async function authorizedFetch(path: string, options: RequestInit = {}, token?: 
     headers["Authorization"] = `Bearer ${activeToken}`;
   }
 
+  const workspaceId = getSelectedWorkspaceId();
+  if (workspaceId && !headers["X-Workspace-Id"]) {
+    headers["X-Workspace-Id"] = workspaceId;
+  }
+
   let response = await fetch(`${API_BASE_URL}${path}`, {
     ...options,
     headers,
@@ -243,6 +298,15 @@ async function authorizedFetch(path: string, options: RequestInit = {}, token?: 
 
   if (response.status === 401) {
     window.dispatchEvent(new Event("auth:unauthorized"));
+  }
+
+  // Perdeu o acesso ao workspace salvo: descarta a seleção para as próximas requisições
+  if (response.status === 403 && workspaceId) {
+    const body = await response.clone().json().catch(() => null);
+    if (body?.code === "WORKSPACE_FORBIDDEN" && getSelectedWorkspaceId() === workspaceId) {
+      setSelectedWorkspaceId(null);
+      window.dispatchEvent(new CustomEvent(WORKSPACE_LOST_EVENT, { detail: { workspaceId } }));
+    }
   }
 
   return response;
@@ -472,6 +536,78 @@ export async function moveContentApi(id: number, input: ContentMoveInput, token?
 
 export async function deleteContentApi(id: number, token?: string | null): Promise<void> {
   await fetchWithAuth<void>(`/conteudos/${id}`, { method: "DELETE" }, token, "Erro ao excluir conteúdo");
+}
+
+/* ==========================================================================
+   WORKSPACES, EQUIPE E CONVITES API
+   ========================================================================== */
+
+export async function getWorkspacesApi(token?: string | null): Promise<WorkspaceSummary[]> {
+  const data = await fetchWithAuth<{ workspaces: WorkspaceSummary[] }>("/workspaces", {}, token, "Erro ao carregar workspaces");
+  return data.workspaces;
+}
+
+export async function getTeamApi(token?: string | null): Promise<TeamResponse> {
+  return fetchWithAuth<TeamResponse>("/membros", {}, token, "Erro ao carregar a equipe");
+}
+
+export async function updateMemberRoleApi(memberId: number, papel: AssignableRole, token?: string | null): Promise<TeamMember> {
+  const data = await fetchWithAuth<{ membro: TeamMember }>(
+    `/membros/${memberId}`,
+    { method: "PATCH", body: JSON.stringify({ papel }) },
+    token,
+    "Erro ao alterar papel"
+  );
+  return data.membro;
+}
+
+export async function removeMemberApi(memberId: number, token?: string | null): Promise<void> {
+  await fetchWithAuth<void>(`/membros/${memberId}`, { method: "DELETE" }, token, "Erro ao remover membro");
+}
+
+export async function leaveWorkspaceApi(token?: string | null): Promise<void> {
+  await fetchWithAuth<void>("/membros/sair", { method: "POST" }, token, "Erro ao sair do workspace");
+}
+
+export async function getInvitesApi(token?: string | null): Promise<Invite[]> {
+  const data = await fetchWithAuth<{ convites: Invite[] }>("/convites", {}, token, "Erro ao carregar convites");
+  return data.convites;
+}
+
+export async function createInviteApi(email: string, papel: AssignableRole, token?: string | null): Promise<InviteDelivery> {
+  return fetchWithAuth<InviteDelivery>(
+    "/convites",
+    { method: "POST", body: JSON.stringify({ email, papel }) },
+    token,
+    "Erro ao enviar convite"
+  );
+}
+
+export async function resendInviteApi(inviteId: number, token?: string | null): Promise<InviteDelivery> {
+  return fetchWithAuth<InviteDelivery>(`/convites/${inviteId}/reenviar`, { method: "POST" }, token, "Erro ao reenviar convite");
+}
+
+export async function revokeInviteApi(inviteId: number, token?: string | null): Promise<void> {
+  await fetchWithAuth<void>(`/convites/${inviteId}`, { method: "DELETE" }, token, "Erro ao revogar convite");
+}
+
+/** Público: dados do convite para a tela de aceite (não exige login) */
+export async function getInvitePreviewApi(inviteToken: string): Promise<InvitePreview> {
+  const response = await fetch(`${API_BASE_URL}/convites/token/${encodeURIComponent(inviteToken)}`);
+  const data = await parseResponse<{ convite: InvitePreview }>(response, "Convite não encontrado");
+  return data.convite;
+}
+
+export async function acceptInviteApi(
+  inviteToken: string,
+  token?: string | null
+): Promise<{ workspace: { id: string; nome: string }; papel: AssignableRole }> {
+  return fetchWithAuth(
+    "/convites/aceitar",
+    { method: "POST", body: JSON.stringify({ token: inviteToken }) },
+    token,
+    "Erro ao aceitar convite"
+  );
 }
 
 /* ==========================================================================

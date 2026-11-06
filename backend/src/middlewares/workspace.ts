@@ -34,7 +34,8 @@ export async function WorkspaceMiddleware(
         entidade: "workspace",
         entidadeId: requestedId,
       });
-      return res.status(403).json({ error: "Você não tem acesso a este workspace." });
+      // O código permite ao frontend descartar a seleção salva e voltar ao workspace pessoal
+      return res.status(403).json({ error: "Você não tem acesso a este workspace.", code: "WORKSPACE_FORBIDDEN" });
     }
 
     req.workspaceId = membership.workspaceId;

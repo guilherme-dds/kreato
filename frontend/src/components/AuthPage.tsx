@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import { useLocation } from "react-router-dom";
 import { Mail, Lock, User as UserIcon, Eye, EyeOff, LogIn, UserPlus } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
 import { KreatoLogo } from "./KreatoLogo";
@@ -10,10 +11,12 @@ interface AuthPageProps {
 
 export const AuthPage: React.FC<AuthPageProps> = ({ showToast }) => {
   const { login, register } = useAuth();
-  const [isRegister, setIsRegister] = useState(false);
+  // Vindo de um convite: já abre no modo certo e com o e-mail convidado
+  const hint = (useLocation().state as { email?: string; cadastro?: boolean } | null) ?? {};
+  const [isRegister, setIsRegister] = useState(hint.cadastro === true);
   const [isForgotPassword, setIsForgotPassword] = useState(false);
   const [nome, setNome] = useState("");
-  const [email, setEmail] = useState("");
+  const [email, setEmail] = useState(hint.email ?? "");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);

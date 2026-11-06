@@ -15,6 +15,8 @@ import { IdeasPage } from "./pages/IdeasPage";
 import { PipelinePage } from "./pages/PipelinePage";
 import { CalendarPage } from "./pages/CalendarPage";
 import { PlansPage } from "./pages/PlansPage";
+import { TeamPage } from "./pages/TeamPage";
+import { InvitePage } from "./pages/InvitePage";
 import { MAIN_NAV } from "./navigation";
 
 // Páginas com gráficos (recharts) carregam sob demanda para não pesar o bundle inicial
@@ -63,7 +65,7 @@ const PublicOnly: React.FC<{ children: React.ReactElement }> = ({ children }) =>
 const AppRoutes: React.FC<{ showToast: ShowToast }> = ({ showToast }) => {
   const navigate = useNavigate();
   // Módulos já implementados têm rota própria; os demais exibem "em breve"
-  const implementedPaths = ["/", "/ideias", "/pipeline", "/calendario", "/metricas"];
+  const implementedPaths = ["/", "/ideias", "/pipeline", "/calendario", "/metricas", "/equipe"];
   const modulePages = MAIN_NAV.filter((item) => !implementedPaths.includes(item.path));
 
   return (
@@ -72,6 +74,8 @@ const AppRoutes: React.FC<{ showToast: ShowToast }> = ({ showToast }) => {
         path="/reset-password"
         element={<ResetPasswordPage showToast={showToast} onGoToLogin={() => navigate("/login")} />}
       />
+      {/* Link do e-mail de convite: abre logado ou não */}
+      <Route path="/convite" element={<InvitePage showToast={showToast} />} />
       <Route
         path="/login"
         element={
@@ -94,6 +98,7 @@ const AppRoutes: React.FC<{ showToast: ShowToast }> = ({ showToast }) => {
         <Route path="pipeline/:id" element={withSuspense(<ContentEditorPage />)} />
         <Route path="calendario" element={<CalendarPage />} />
         <Route path="metricas" element={withSuspense(<AnalyticsPage />)} />
+        <Route path="equipe" element={<TeamPage />} />
         {modulePages.map((item) => (
           <Route
             key={item.path}

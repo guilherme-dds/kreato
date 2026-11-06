@@ -2,13 +2,21 @@ import React, { useCallback, useEffect, useRef, useState } from "react";
 import { NavLink, Outlet, useLocation, useNavigate } from "react-router-dom";
 import { Crown, Lock, LogOut, Menu, Sparkles, User as UserIcon, X } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
-import { getUserProfileApi, verifyStripeSessionApi } from "../api/backend";
+import {
+  WORKSPACE_LOST_EVENT,
+  getSelectedWorkspaceId,
+  getUserProfileApi,
+  getWorkspacesApi,
+  setSelectedWorkspaceId,
+  verifyStripeSessionApi,
+} from "../api/backend";
 import { KreatoLogo } from "../components/KreatoLogo";
 import { PremiumBadge } from "../components/PremiumBadge";
+import { WorkspaceSwitcher } from "../components/WorkspaceSwitcher";
 import { MAIN_NAV } from "../navigation";
-import { PLAN_LABELS, getUserPlan, hasPlanAtLeast, isPaidPlan } from "../utils/plans";
+import { PLAN_LABELS, PLANS, getUserPlan, isPaidPlan } from "../utils/plans";
 import type { LayoutContext, ShowToast } from "./layoutContext";
-import type { PlanResource } from "../types";
+import type { PlanResource, WorkspaceSummary } from "../types";
 
 interface AppLayoutProps {
   showToast: ShowToast;
@@ -22,6 +30,13 @@ export const AppLayout: React.FC<AppLayoutProps> = ({ showToast }) => {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const handledStripeSearch = useRef<string | null>(null);
 
+  const [workspaces, setWorkspaces] = useState<WorkspaceSummary[]>([]);
+  // null = workspace pessoal (requisições sem o header X-Workspace-Id)
+  const [selectedId, setSelectedId] = useState<string | null>(() => getSelectedWorkspaceId());
+
+  const activeWorkspace =
+    workspaces.find((w) => (selectedId ? w.id === selectedId : w.pessoal)) ?? workspaces.find((w) => w.pessoal) ?? null;
+
   const plan = getUserPlan(user);
   const isPaid = isPaidPlan(user);
   const userName = user?.nome || (user?.email ? user.email.split("@")[0] : "Criador");
@@ -30,6 +45,51 @@ export const AppLayout: React.FC<AppLayoutProps> = ({ showToast }) => {
     (reason?: PlanResource) => navigate("/planos", reason ? { state: { motivo: reason } } : undefined),
     [navigate]
   );
+
+  const refreshWorkspaces = useCallback(async () => {
+    try {
+      const list = await getWorkspacesApi(token);
+      setWorkspaces(list);
+      // A seleção salva não existe mais (saiu ou foi removido): volta para o pessoal
+      const saved = getSelectedWorkspaceId();
+      if (saved && !list.some((w) => w.id === saved)) {
+        setSelectedWorkspaceId(null);
+        setSelectedId(null);
+      }
+    } catch (err) {
+      console.error("Erro ao carregar workspaces:", err);
+    }
+  }, [token]);
+
+  useEffect(() => {
+    refreshWorkspaces();
+  }, [refreshWorkspaces]);
+
+  const switchWorkspace = useCallback(
+    (workspace: WorkspaceSummary) => {
+      const id = workspace.pessoal ? null : workspace.id;
+      setSelectedWorkspaceId(id);
+      setSelectedId(id);
+      // Um conteúdo aberto pertence ao workspace anterior
+      if (/^\/pipeline\/.+/.test(location.pathname)) navigate("/pipeline");
+      showToast("info", `Você está em ${workspace.nome}.`);
+    },
+    [location.pathname, navigate, showToast]
+  );
+
+  // O servidor recusou o workspace salvo (ex.: a pessoa foi removida da equipe)
+  useEffect(() => {
+    const handleLost = () => {
+      setSelectedId(null);
+      showToast("error", "Você não tem mais acesso a esse workspace. Voltamos para o seu workspace pessoal.");
+      refreshWorkspaces();
+    };
+    window.addEventListener(WORKSPACE_LOST_EVENT, handleLost);
+    return () => window.removeEventListener(WORKSPACE_LOST_EVENT, handleLost);
+  }, [refreshWorkspaces, showToast]);
+
+  // Recursos de plano no menu seguem o plano do dono do workspace atual
+  const workspacePlan = activeWorkspace?.plano ?? plan;
 
   // Fecha o menu lateral (mobile) ao trocar de página
   useEffect(() => {
@@ -112,10 +172,12 @@ export const AppLayout: React.FC<AppLayoutProps> = ({ showToast }) => {
           </button>
         </div>
 
+        <WorkspaceSwitcher workspaces={workspaces} active={activeWorkspace} onSelect={switchWorkspace} />
+
         <nav className="sidebar-nav">
           {MAIN_NAV.map((item) => {
             const Icon = item.icon;
-            const isLocked = item.requiredPlan && !hasPlanAtLeast(user, item.requiredPlan);
+            const isLocked = item.requiredPlan && PLANS.indexOf(workspacePlan) < PLANS.indexOf(item.requiredPlan);
             return (
               <NavLink
                 key={item.path}
@@ -181,7 +243,13 @@ export const AppLayout: React.FC<AppLayoutProps> = ({ showToast }) => {
       {/* Page Content */}
       <main className="app-main">
         <div className="app-main-inner">
-          <Outlet context={{ showToast, openPlans } satisfies LayoutContext} />
+          {/* A key remonta as páginas ao trocar de workspace, para recarregarem os dados certos */}
+          <Outlet
+            key={selectedId ?? "pessoal"}
+            context={
+              { showToast, openPlans, workspace: activeWorkspace, refreshWorkspaces, switchWorkspace } satisfies LayoutContext
+            }
+          />
         </div>
       </main>
 

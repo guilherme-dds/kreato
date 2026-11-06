@@ -93,6 +93,63 @@ export interface Content {
 }
 
 export type WorkspaceRole = "DONO" | "GESTOR" | "ROTEIRISTA" | "EDITOR";
+/** Papéis atribuíveis por convite ou alteração (o DONO é único e fixo) */
+export type AssignableRole = Exclude<WorkspaceRole, "DONO">;
+
+/** Workspace do qual o usuário participa (GET /workspaces) */
+export interface WorkspaceSummary {
+  id: string;
+  nome: string;
+  pessoal: boolean;
+  papel: WorkspaceRole;
+  /** Plano do dono: é ele que define os limites do workspace */
+  plano: Plan;
+  totalMembros: number;
+}
+
+export interface TeamMember {
+  id: number;
+  papel: WorkspaceRole;
+  criadoEm: string;
+  usuario: { id: string; nome: string; email: string; fotoPerfil: string | null };
+  souEu?: boolean;
+}
+
+export interface TeamResponse {
+  membros: TeamMember[];
+  meuPapel: WorkspaceRole;
+  podeGerenciar: boolean;
+  vagas: { membros: number; convitesPendentes: number; limite: number | null };
+}
+
+export type InviteState = "PENDENTE" | "EXPIRADO" | "ACEITO" | "REVOGADO";
+
+export interface Invite {
+  id: number;
+  email: string;
+  papel: AssignableRole;
+  status: string;
+  estado: InviteState;
+  expiraEm: string;
+  criadoEm: string;
+  convidadoPor: { id: string; nome: string } | null;
+}
+
+/** Resultado de criar/reenviar convite: o link só é devolvido nesse momento */
+export interface InviteDelivery {
+  convite: Invite;
+  link: string;
+  emailEnviado: boolean;
+}
+
+export interface InvitePreview {
+  email: string;
+  papel: AssignableRole;
+  estado: InviteState;
+  expiraEm: string;
+  workspace: string;
+  convidadoPor: string | null;
+}
 
 /** O que o usuário atual pode fazer com um conteúdo (calculado pelo backend) */
 export interface ContentPermissions {
