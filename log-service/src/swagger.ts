@@ -107,6 +107,36 @@ export const logSwaggerDocument = {
         },
       },
     },
+    "/api/logs/stats": {
+      get: {
+        tags: ["Logs & Auditoria"],
+        summary: "Estatísticas de uso e segurança da plataforma (Apenas ADMIN)",
+        description:
+          "Agrega os eventos do período por dia (eventos, usuários ativos, logins, acessos negados), as ações mais frequentes e os eventos de segurança recentes. Também disponível em /logs/stats.",
+        security: [{ bearerAuth: [] }],
+        parameters: [
+          {
+            name: "dias",
+            in: "query",
+            required: false,
+            description: "Tamanho do período em dias, terminando hoje (UTC). Entre 1 e 90; padrão 30.",
+            schema: { type: "integer", minimum: 1, maximum: 90, default: 30 },
+          },
+        ],
+        responses: {
+          "200": {
+            description: "Estatísticas do período",
+            content: {
+              "application/json": {
+                schema: { $ref: "#/components/schemas/LogStats" },
+              },
+            },
+          },
+          "401": { description: "Token ausente ou inválido" },
+          "403": { description: "Acesso negado (Requer role ADMIN)" },
+        },
+      },
+    },
     "/logs": {
       get: {
         tags: ["Logs & Auditoria"],
@@ -170,6 +200,51 @@ export const logSwaggerDocument = {
             type: "array",
             items: { $ref: "#/components/schemas/LogEntry" },
           },
+        },
+      },
+      LogStats: {
+        type: "object",
+        properties: {
+          periodo: {
+            type: "object",
+            properties: {
+              dias: { type: "integer", example: 30 },
+              inicio: { type: "string", format: "date-time" },
+              fim: { type: "string", format: "date-time" },
+            },
+          },
+          total: { type: "integer", example: 1280 },
+          usuariosAtivos: { type: "integer", example: 57 },
+          porDia: {
+            type: "array",
+            items: {
+              type: "object",
+              properties: {
+                dia: { type: "string", example: "2026-11-06" },
+                eventos: { type: "integer", example: 42 },
+                usuariosAtivos: { type: "integer", example: 12 },
+                logins: { type: "integer", example: 9 },
+                negados: { type: "integer", example: 1 },
+              },
+            },
+          },
+          porAcao: {
+            type: "array",
+            items: {
+              type: "object",
+              properties: { acao: { type: "string", example: "LOGIN" }, total: { type: "integer", example: 310 } },
+            },
+          },
+          seguranca: {
+            type: "object",
+            properties: {
+              acessosNegados: { type: "integer", example: 4 },
+              erros: { type: "integer", example: 2 },
+              limitesAtingidos: { type: "integer", example: 11 },
+              recentes: { type: "array", items: { $ref: "#/components/schemas/LogEntry" } },
+            },
+          },
+          fonte: { type: "string", enum: ["redis", "memoria"], example: "redis" },
         },
       },
       HealthResponse: {

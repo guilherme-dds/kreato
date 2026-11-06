@@ -13,6 +13,7 @@ import {
 import { ChartColumn, Crown, ExternalLink, Eye, Heart, RefreshCw, TrendingUp, UserPlus } from "lucide-react";
 import { PageHeader } from "../components/PageHeader";
 import { ChartEmpty, ChartTooltip } from "../components/charts/ChartTooltip";
+import { StatTile } from "../components/charts/StatTile";
 import { CHART, tooltipDatum } from "../components/charts/chartTheme";
 import { useAuth } from "../context/AuthContext";
 import { useLayoutContext } from "../layouts/layoutContext";
@@ -92,20 +93,6 @@ function bucketize(contents: MetricsSummaryContent[], from: Date, to: Date, gran
   }
   return [...buckets.values()];
 }
-
-const StatTile: React.FC<{ icon: React.ReactNode; label: string; value: string; hint?: string }> = ({
-  icon,
-  label,
-  value,
-  hint,
-}) => (
-  <div className="stat-tile">
-    <span className="stat-tile-icon">{icon}</span>
-    <span className="stat-tile-label">{label}</span>
-    <strong className="stat-tile-value">{value}</strong>
-    {hint && <span className="stat-tile-hint">{hint}</span>}
-  </div>
-);
 
 export const AnalyticsPage: React.FC = () => {
   const { token } = useAuth();

@@ -17,6 +17,11 @@ export default defineConfig({
         target: process.env.VITE_AUTH_TARGET || 'http://auth-service:3334',
         changeOrigin: true,
       },
+      // Estatísticas e auditoria ficam no log-service (o nginx faz o mesmo em produção)
+      '/api/logs': {
+        target: process.env.VITE_LOG_TARGET || 'http://log-service:3335',
+        changeOrigin: true,
+      },
       '/api': {
         target: process.env.VITE_BACKEND_TARGET || 'http://backend:3333',
         changeOrigin: true,

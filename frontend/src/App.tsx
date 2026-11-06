@@ -24,6 +24,7 @@ const ContentEditorPage = lazy(() =>
   import("./pages/ContentEditorPage").then((module) => ({ default: module.ContentEditorPage }))
 );
 const AnalyticsPage = lazy(() => import("./pages/AnalyticsPage").then((module) => ({ default: module.AnalyticsPage })));
+const AdminPage = lazy(() => import("./pages/AdminPage").then((module) => ({ default: module.AdminPage })));
 
 const PageLoader: React.FC = () => (
   <div className="catalog-loading">
@@ -48,6 +49,13 @@ const RequireAuth: React.FC<{ children: React.ReactElement }> = ({ children }) =
 
   if (isLoading) return <FullScreenLoader />;
   if (!isAuthenticated) return <Navigate to="/login" replace state={{ from: location }} />;
+  return children;
+};
+
+/** Painel administrativo: só para contas com role admin (o backend também recusa as demais) */
+const RequireAdmin: React.FC<{ children: React.ReactElement }> = ({ children }) => {
+  const { user } = useAuth();
+  if (user?.role?.toLowerCase() !== "admin") return <Navigate to="/" replace />;
   return children;
 };
 
@@ -99,6 +107,7 @@ const AppRoutes: React.FC<{ showToast: ShowToast }> = ({ showToast }) => {
         <Route path="calendario" element={<CalendarPage />} />
         <Route path="metricas" element={withSuspense(<AnalyticsPage />)} />
         <Route path="equipe" element={<TeamPage />} />
+        <Route path="admin" element={<RequireAdmin>{withSuspense(<AdminPage />)}</RequireAdmin>} />
         {modulePages.map((item) => (
           <Route
             key={item.path}

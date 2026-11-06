@@ -122,6 +122,68 @@ export interface TeamResponse {
   vagas: { membros: number; convitesPendentes: number; limite: number | null };
 }
 
+/* ===== Painel administrativo ===== */
+export interface DailyCount {
+  dia: string;
+  total: number;
+}
+
+export interface AdminPeriod {
+  dias: number;
+  inicio: string;
+  fim: string;
+}
+
+/** GET /admin/metricas — dados do banco */
+export interface AdminMetrics {
+  periodo: AdminPeriod;
+  usuarios: {
+    total: number;
+    novos: number;
+    porPlano: Record<Plan, number>;
+    pagantes: number;
+    mrrEstimadoCentavos: number;
+    novosPorDia: DailyCount[];
+  };
+  workspaces: { total: number; comEquipe: number; convitesPendentes: number };
+  conteudos: {
+    total: number;
+    porEtapa: { etapa: ContentStage; total: number }[];
+    criadosNoPeriodo: number;
+    publicadosNoPeriodo: number;
+    publicadosPorDia: DailyCount[];
+    roteirosAprovados: number;
+    comentarios: number;
+  };
+  ideias: { ativas: number };
+  armazenamento: { bytes: number };
+}
+
+export interface SecurityEvent {
+  acao: string;
+  timestamp: string;
+  user_id: string | null;
+  ip: string;
+  entidade: string | null;
+  entidade_id: string | null;
+}
+
+/** GET /api/logs/stats — eventos de auditoria do log-service */
+export interface LogStats {
+  periodo: AdminPeriod;
+  total: number;
+  usuariosAtivos: number;
+  porDia: { dia: string; eventos: number; usuariosAtivos: number; logins: number; negados: number }[];
+  porAcao: { acao: string; total: number }[];
+  seguranca: {
+    acessosNegados: number;
+    erros: number;
+    limitesAtingidos: number;
+    recentes: SecurityEvent[];
+  };
+  fonte: "redis" | "memoria";
+}
+
 export type InviteState = "PENDENTE" | "EXPIRADO" | "ACEITO" | "REVOGADO";
 
 export interface Invite {

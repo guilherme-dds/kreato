@@ -5,6 +5,7 @@ import swaggerUi from "swagger-ui-express";
 import { Redis } from "ioredis";
 import { AuthMiddleware, AdminMiddleware } from "./middlewares/auth.js";
 import { logSwaggerDocument } from "./swagger.js";
+import { buildStats, parseDays, periodStart } from "./stats.js";
 
 const app = express();
 app.use(express.json());
@@ -152,6 +153,31 @@ app.get("/api/logs", AuthMiddleware, AdminMiddleware, async (req, res) => {
     res.json({ count: memoryLogs.length, logs: memoryLogs });
   }
 });
+
+/**
+ * GET /logs/stats?dias=30 — agregados do período para o painel administrativo.
+ * Lê só a faixa do período no stream (os IDs do Redis começam com o timestamp em ms).
+ */
+async function statsHandler(req: express.Request, res: express.Response) {
+  const days = parseDays(req.query.dias);
+  const now = new Date();
+  const start = periodStart(days, now);
+
+  let entries: LogEntry[];
+  try {
+    const rawStream = await redis.xrange(STREAM_KEY, String(start.getTime()), "+");
+    entries = rawStream.map(([id, fields]) => parseStreamMessage(id, fields as string[]));
+    if (entries.length === 0 && memoryLogs.length > 0) entries = memoryLogs;
+  } catch {
+    // Redis fora do ar: usa o que o consumidor já guardou em memória
+    entries = memoryLogs;
+  }
+
+  res.json({ ...buildStats(entries, days, now), fonte: redis.status === "ready" ? "redis" : "memoria" });
+}
+
+app.get("/logs/stats", AuthMiddleware, AdminMiddleware, statsHandler);
+app.get("/api/logs/stats", AuthMiddleware, AdminMiddleware, statsHandler);
 
 app.listen(PORT, () => {
   console.log(`[log-service] Rodando na porta ${PORT}`);

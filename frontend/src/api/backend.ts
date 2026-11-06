@@ -14,7 +14,9 @@ import type {
   IdeaInput,
   IdeasResponse,
   ContentCreateInput,
+  AdminMetrics,
   AssignableRole,
+  LogStats,
   ContentComment,
   ContentDetail,
   ContentFilters,
@@ -536,6 +538,19 @@ export async function moveContentApi(id: number, input: ContentMoveInput, token?
 
 export async function deleteContentApi(id: number, token?: string | null): Promise<void> {
   await fetchWithAuth<void>(`/conteudos/${id}`, { method: "DELETE" }, token, "Erro ao excluir conteúdo");
+}
+
+/* ==========================================================================
+   PAINEL ADMINISTRATIVO API (apenas role admin)
+   ========================================================================== */
+
+export async function getAdminMetricsApi(dias: number, token?: string | null): Promise<AdminMetrics> {
+  return fetchWithAuth<AdminMetrics>(`/admin/metricas?dias=${dias}`, {}, token, "Erro ao carregar métricas da plataforma");
+}
+
+/** Servido pelo log-service (o proxy encaminha /api/logs para ele) */
+export async function getLogStatsApi(dias: number, token?: string | null): Promise<LogStats> {
+  return fetchWithAuth<LogStats>(`/logs/stats?dias=${dias}`, {}, token, "Erro ao carregar estatísticas de uso");
 }
 
 /* ==========================================================================

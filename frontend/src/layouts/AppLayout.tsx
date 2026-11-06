@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import { NavLink, Outlet, useLocation, useNavigate } from "react-router-dom";
-import { Crown, Lock, LogOut, Menu, Sparkles, User as UserIcon, X } from "lucide-react";
+import { Crown, Lock, LogOut, Menu, ShieldCheck, Sparkles, User as UserIcon, X } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
 import {
   WORKSPACE_LOST_EVENT,
@@ -39,6 +39,7 @@ export const AppLayout: React.FC<AppLayoutProps> = ({ showToast }) => {
 
   const plan = getUserPlan(user);
   const isPaid = isPaidPlan(user);
+  const isAdmin = user?.role?.toLowerCase() === "admin";
   const userName = user?.nome || (user?.email ? user.email.split("@")[0] : "Criador");
 
   const openPlans = useCallback(
@@ -195,6 +196,12 @@ export const AppLayout: React.FC<AppLayoutProps> = ({ showToast }) => {
               </NavLink>
             );
           })}
+          {isAdmin && (
+            <NavLink to="/admin" className={({ isActive }) => `sidebar-link sidebar-link-admin ${isActive ? "active" : ""}`}>
+              <ShieldCheck size={19} />
+              <span>Admin</span>
+            </NavLink>
+          )}
         </nav>
 
         <div className="sidebar-footer">

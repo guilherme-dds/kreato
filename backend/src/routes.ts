@@ -11,7 +11,8 @@ import { DashboardController } from "./controller/DashboardController.js";
 import { TeamController } from "./controller/TeamController.js";
 import { InviteController } from "./controller/InviteController.js";
 import { ReviewController } from "./controller/ReviewController.js";
-import { AuthMiddleware } from "./middlewares/auth.js";
+import { AdminController } from "./controller/AdminController.js";
+import { AdminMiddleware, AuthMiddleware } from "./middlewares/auth.js";
 import { WorkspaceMiddleware, requireWorkspaceRole } from "./middlewares/workspace.js";
 
 const upload = multer({
@@ -32,6 +33,7 @@ const dashboardController = new DashboardController();
 const teamController = new TeamController();
 const inviteController = new InviteController();
 const reviewController = new ReviewController();
+const adminController = new AdminController();
 
 export const router = Router();
 
@@ -93,6 +95,10 @@ router.patch(
 
 // Creator Dashboard (weekly goal, pipeline, agenda, ideas and recent performance)
 router.get("/dashboard", AuthMiddleware, WorkspaceMiddleware, (req, res) => dashboardController.show(req, res));
+
+// Painel administrativo: números da plataforma inteira (apenas role admin)
+router.get("/admin/metricas", AuthMiddleware, AdminMiddleware, (req, res) => adminController.platformMetrics(req, res));
+router.get("/api/admin/metricas", AuthMiddleware, AdminMiddleware, (req, res) => adminController.platformMetrics(req, res));
 router.get("/api/dashboard", AuthMiddleware, WorkspaceMiddleware, (req, res) => dashboardController.show(req, res));
 
 // Team Members Routes (current workspace)
