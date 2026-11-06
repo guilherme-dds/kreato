@@ -68,7 +68,7 @@ const PlansPlaceholder: React.FC = () => {
       description="Compare os planos Gratuito, Kreato Creator e Kreato Studio."
     >
       <button className="btn btn-primary" onClick={openPlansModal}>
-        Ver plano Kreato Creator
+        Ver planos Creator e Studio
       </button>
     </ComingSoonPage>
   );

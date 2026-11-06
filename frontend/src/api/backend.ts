@@ -1,5 +1,9 @@
 import type {
   User,
+  BillingPlansResponse,
+  CheckoutResponse,
+  PaidPlan,
+  Plan,
   DashboardData,
   AuthResponse,
   RefreshTokenResponse,
@@ -302,30 +306,39 @@ export async function removeUserAvatarApi(token?: string | null): Promise<User> 
    STRIPE & PREMIUM SUBSCRIPTION API
    ========================================================================== */
 
-export async function createStripeCheckoutSessionApi(token?: string | null): Promise<{ url: string; mockActivated?: boolean; message?: string }> {
-  return fetchWithAuth<{ url: string; mockActivated?: boolean; message?: string }>(
+export async function getBillingPlansApi(token?: string | null): Promise<BillingPlansResponse> {
+  return fetchWithAuth<BillingPlansResponse>("/stripe/plans", {}, token, "Erro ao carregar os planos");
+}
+
+export async function createStripeCheckoutSessionApi(plano: PaidPlan, token?: string | null): Promise<CheckoutResponse> {
+  return fetchWithAuth<CheckoutResponse>(
     "/stripe/create-checkout-session",
-    { method: "POST" },
+    { method: "POST", body: JSON.stringify({ plano }) },
     token,
     "Erro ao iniciar checkout do Stripe"
   );
 }
 
-export async function toggleMockPremiumApi(token?: string | null): Promise<{ user: User; message: string }> {
+/** Ativa um plano sem cartão (somente fora de produção) */
+export async function activateMockPlanApi(plano: Plan, token?: string | null): Promise<{ user: User; message: string }> {
   return fetchWithAuth<{ user: User; message: string }>(
     "/stripe/mock-upgrade",
-    { method: "POST" },
+    { method: "POST", body: JSON.stringify({ plano }) },
     token,
     "Erro ao alternar o plano"
   );
 }
 
-export async function verifyStripeSessionApi(token?: string | null, sessionId?: string | null): Promise<{ user: User; success: boolean }> {
+export async function verifyStripeSessionApi(
+  token?: string | null,
+  sessionId?: string | null,
+  plano?: string | null
+): Promise<{ user: User; success: boolean }> {
   return fetchWithAuth<{ user: User; success: boolean }>(
     "/stripe/verify-session",
     {
       method: "POST",
-      body: JSON.stringify({ sessionId }),
+      body: JSON.stringify({ sessionId, plano }),
     },
     token,
     "Erro ao verificar pagamento do Stripe"

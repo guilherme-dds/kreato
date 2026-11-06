@@ -150,6 +150,9 @@ router.delete("/metricas/:id", AuthMiddleware, WorkspaceMiddleware, (req, res) =
 router.delete("/api/metricas/:id", AuthMiddleware, WorkspaceMiddleware, (req, res) => metricController.delete(req, res));
 
 // Stripe Routes
+router.get("/stripe/plans", (req, res) => stripeController.plans(req, res));
+router.get("/api/stripe/plans", (req, res) => stripeController.plans(req, res));
+
 router.post("/stripe/create-checkout-session", AuthMiddleware, (req, res) => stripeController.createCheckoutSession(req, res));
 router.post("/api/stripe/create-checkout-session", AuthMiddleware, (req, res) => stripeController.createCheckoutSession(req, res));
 

@@ -266,3 +266,43 @@ export interface DashboardData {
     } | null;
   };
 }
+
+/* ==========================================================================
+   BILLING (planos e checkout)
+   ========================================================================== */
+export type PaidPlan = Exclude<Plan, "FREE">;
+
+/** Limites do plano; null = ilimitado */
+export interface PlanLimits {
+  ideias: number | null;
+  conteudosAtivos: number | null;
+  armazenamentoMB: number | null;
+  historicoMetricasDias: number | null;
+  membros: number | null;
+}
+
+export interface PlanOffer {
+  plano: Plan;
+  nome: string;
+  descricao: string;
+  precoCentavos: number;
+  moeda: "brl";
+  limites: PlanLimits;
+}
+
+export interface BillingPlansResponse {
+  planos: PlanOffer[];
+  stripeConfigurado: boolean;
+  /** Fora de produção: permite ativar planos sem cartão */
+  modoTeste: boolean;
+}
+
+export interface CheckoutResponse {
+  /** Stripe Checkout, portal do cliente ou retorno simulado */
+  url?: string;
+  mockActivated?: boolean;
+  /** Troca Creator <-> Studio feita direto na assinatura */
+  changed?: boolean;
+  user?: User;
+  message?: string;
+}

@@ -48,7 +48,7 @@ export const AppLayout: React.FC<AppLayoutProps> = ({ showToast }) => {
 
     if (stripeStatus === "success" || stripeStatus === "success_mock") {
       if (token) {
-        verifyStripeSessionApi(token, query.get("session_id"))
+        verifyStripeSessionApi(token, query.get("session_id"), query.get("plano"))
           .then((data) => {
             if (data.user) {
               updateUser(data.user);
@@ -60,6 +60,7 @@ export const AppLayout: React.FC<AppLayoutProps> = ({ showToast }) => {
           })
           .catch((err) => {
             console.error("Erro ao verificar sessão do Stripe:", err);
+            showToast("error", err instanceof Error ? err.message : "Não foi possível confirmar o pagamento.");
             refreshProfile();
           });
       } else {

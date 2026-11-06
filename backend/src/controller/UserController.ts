@@ -1,6 +1,7 @@
 import type { Request, Response } from "express";
 import prisma from "../utils/prisma.js";
 import { isPaidPlan } from "../utils/plans.js";
+import { getStripe, isMockStripeId, planFromSubscription } from "../utils/billing.js";
 import {
   uploadAvatarToMinio,
   getAvatarFromMinio,
@@ -52,12 +53,10 @@ export class UserController {
       }
 
       // Se o usuário estiver no plano gratuito no banco local, mas tiver um customerId no Stripe, sincroniza automaticamente
-      if (!isPaidPlan(user.plano) && user.stripeCustomerId && !user.stripeCustomerId.startsWith("cus_test_mock_")) {
-        const secretKey = process.env.STRIPE_SECRET_KEY;
-        if (secretKey && secretKey.trim().length > 0 && !secretKey.includes("YOUR_STRIPE")) {
+      if (!isPaidPlan(user.plano) && user.stripeCustomerId && !isMockStripeId(user.stripeCustomerId)) {
+        const stripe = getStripe();
+        if (stripe) {
           try {
-            const Stripe = (await import("stripe")).default;
-            const stripe = new Stripe(secretKey);
             const subs = await stripe.subscriptions.list({
               customer: user.stripeCustomerId,
               status: "active",
@@ -69,7 +68,7 @@ export class UserController {
               const updatedUser = await prisma.usuario.update({
                 where: { id: userId },
                 data: {
-                  plano: "CREATOR",
+                  plano: planFromSubscription(activeSub),
                   stripeSubscriptionId: activeSub.id,
                 },
                 select: {

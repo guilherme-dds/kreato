@@ -1,8 +1,8 @@
-import React, { useState } from "react";
-import { X, Crown, Sparkles, Zap, ShieldCheck, Lightbulb, CalendarDays, BarChart3, CreditCard } from "lucide-react";
-import { createStripeCheckoutSessionApi, toggleMockPremiumApi, cancelStripeSubscriptionApi } from "../api/backend";
-import { useAuth } from "../context/AuthContext";
-import { isPaidPlan } from "../utils/plans";
+import React, { useEffect } from "react";
+import { Crown, RefreshCw, ShieldCheck, X } from "lucide-react";
+import { PlanCard } from "./billing/PlanCard";
+import { usePlanActions } from "./billing/usePlanActions";
+import { PLAN_LABELS } from "../utils/plans";
 
 interface PremiumModalProps {
   isOpen: boolean;
@@ -10,173 +10,100 @@ interface PremiumModalProps {
   showToast: (type: "success" | "error" | "info", text: string) => void;
 }
 
-export const PremiumModal: React.FC<PremiumModalProps> = ({ isOpen, onClose, showToast }) => {
-  const { user, updateUser } = useAuth();
-  const [loadingStripe, setLoadingStripe] = useState(false);
-  const [loadingMock, setLoadingMock] = useState(false);
-  const [loadingCancel, setLoadingCancel] = useState(false);
+const PremiumModalContent: React.FC<Omit<PremiumModalProps, "isOpen">> = ({ onClose, showToast }) => {
+  const { catalog, catalogError, loadCatalog, currentPlan, pending, subscribe, activateMock, cancel } = usePlanActions(
+    showToast,
+    onClose
+  );
+  const paidOffers = catalog?.planos.filter((offer) => offer.plano !== "FREE") ?? [];
+  const isPaid = currentPlan !== "FREE";
 
-  if (!isOpen) return null;
-
-  const handleStripeCheckout = async () => {
-    setLoadingStripe(true);
-    try {
-      const data = await createStripeCheckoutSessionApi();
-      if (data.url) {
-        showToast("info", "Redirecionando para o Stripe...");
-        window.location.href = data.url;
-      } else if (data.mockActivated) {
-        updateUser({ plano: "CREATOR" });
-        showToast("success", "Plano Kreato Creator ativado com sucesso em modo de teste!");
-        onClose();
-      }
-    } catch (err: any) {
-      showToast("error", err.message || "Erro ao conectar com o Stripe Checkout.");
-    } finally {
-      setLoadingStripe(false);
-    }
-  };
-
-  const handleMockToggle = async () => {
-    setLoadingMock(true);
-    try {
-      const data = await toggleMockPremiumApi();
-      updateUser({ plano: data.user.plano });
-      showToast(
-        "success",
-        isPaidPlan(data.user)
-          ? "🎉 Você agora é assinante do Kreato Creator em modo de teste!"
-          : "Plano pago desativado. Você voltou para o Plano Gratuito."
-      );
-      onClose();
-    } catch (err: any) {
-      showToast("error", err.message || "Erro ao atualizar o plano.");
-    } finally {
-      setLoadingMock(false);
-    }
-  };
-
-  const handleCancelSubscription = async () => {
-    setLoadingCancel(true);
-    try {
-      const data = await cancelStripeSubscriptionApi();
-      updateUser({ plano: "FREE", ...data.user });
-      showToast("info", "Assinatura cancelada. Você voltou ao Plano Gratuito.");
-      onClose();
-    } catch (err: any) {
-      showToast("error", err.message || "Erro ao cancelar assinatura.");
-    } finally {
-      setLoadingCancel(false);
-    }
-  };
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape" && !pending) onClose();
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [onClose, pending]);
 
   return (
-    <div className="modal-backdrop" onClick={onClose}>
-      <div className="premium-modal-content" onClick={(e) => e.stopPropagation()}>
-        <button className="modal-close-btn" onClick={onClose} aria-label="Fechar">
+    <div className="modal-backdrop" onClick={() => !pending && onClose()}>
+      <div
+        className="premium-modal-content plans-modal"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="plans-modal-title"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <button className="modal-close-btn" onClick={onClose} aria-label="Fechar" disabled={!!pending}>
           <X size={20} />
         </button>
 
         <div className="premium-modal-header">
           <div className="premium-icon-wrapper">
-            <Crown size={38} className="crown-glow" />
+            <Crown size={34} className="crown-glow" />
           </div>
-          <h2>Kreato <span className="gold-text">CREATOR</span></h2>
-          <p>Desbloqueie todo o potencial da plataforma sem nenhuma limitação!</p>
-        </div>
-
-        <div className="premium-features-grid">
-          <div className="premium-feature-card">
-            <div className="feature-icon gold">
-              <Sparkles size={22} />
-            </div>
-            <div>
-              <h4>Selo Exclusivo de Assinante</h4>
-              <p>Destaque-se com o selo dourado do seu plano no perfil.</p>
-            </div>
-          </div>
-
-          <div className="premium-feature-card">
-            <div className="feature-icon primary">
-              <Lightbulb size={22} />
-            </div>
-            <div>
-              <h4>Ideias e Conteúdos Ilimitados</h4>
-              <p>Registre quantas ideias, roteiros e conteúdos quiser, sem limites de uso.</p>
-            </div>
-          </div>
-
-          <div className="premium-feature-card">
-            <div className="feature-icon blue">
-              <CalendarDays size={22} />
-            </div>
-            <div>
-              <h4>Calendário Editorial Completo</h4>
-              <p>Planeje suas publicações e mantenha uma frequência consistente.</p>
-            </div>
-          </div>
-
-          <div className="premium-feature-card">
-            <div className="feature-icon purple">
-              <BarChart3 size={22} />
-            </div>
-            <div>
-              <h4>Histórico Completo de Métricas</h4>
-              <p>Compare o desempenho dos seus conteúdos e oriente suas próximas produções.</p>
-            </div>
-          </div>
-        </div>
-
-        <div className="premium-pricing-card">
-          <div className="price-tag">
-            <span className="currency">R$</span>
-            <span className="amount">19,90</span>
-            <span className="period">/ mês</span>
-          </div>
-          <p className="price-sub">Cancele quando quiser. Pagamento via Stripe (Modo de Teste ou Produção).</p>
-
-          <div className="premium-actions">
-            <button
-              className="btn btn-premium-checkout"
-              onClick={handleStripeCheckout}
-              disabled={loadingStripe || loadingMock || loadingCancel}
-            >
-              <CreditCard size={18} />
-              {loadingStripe
-                ? "Conectando ao Stripe..."
-                : isPaidPlan(user)
-                ? "Gerenciar no Stripe"
-                : "Assinar Agora via Stripe"}
-            </button>
-
-            {isPaidPlan(user) ? (
-              <button
-                className="btn btn-secondary-mock"
-                onClick={handleCancelSubscription}
-                disabled={loadingStripe || loadingMock || loadingCancel}
-                style={{ borderColor: "rgba(239, 68, 68, 0.4)", color: "#ff6b6b" }}
-              >
-                <X size={16} />
-                {loadingCancel ? "Cancelando..." : "Cancelar Assinatura (Voltar ao Gratuito)"}
-              </button>
+          <h2 id="plans-modal-title">
+            {isPaid ? (
+              <>
+                Você está no <span className="gold-text">{PLAN_LABELS[currentPlan]}</span>
+              </>
             ) : (
-              <button
-                className="btn btn-secondary-mock"
-                onClick={handleMockToggle}
-                disabled={loadingStripe || loadingMock || loadingCancel}
-              >
-                <Zap size={16} />
-                {loadingMock ? "Processando..." : "Ativar Teste Rápido sem Cartão"}
-              </button>
+              <>
+                Escolha seu plano <span className="gold-text">Kreato</span>
+              </>
             )}
-          </div>
+          </h2>
+          <p>Produza sem limites sozinho com o Creator, ou traga sua equipe com o Studio.</p>
         </div>
+
+        {catalogError ? (
+          <div className="plans-modal-state">
+            <p>{catalogError}</p>
+            <button className="btn btn-sm btn-secondary" onClick={loadCatalog}>
+              <RefreshCw size={14} /> Tentar novamente
+            </button>
+          </div>
+        ) : !catalog ? (
+          <div className="plans-modal-state">
+            <RefreshCw className="spinning-icon" size={22} />
+            <span>Carregando planos...</span>
+          </div>
+        ) : (
+          <div className="plan-grid">
+            {paidOffers.map((offer) => (
+              <PlanCard
+                key={offer.plano}
+                offer={offer}
+                currentPlan={currentPlan}
+                testMode={catalog.modoTeste}
+                pending={pending}
+                highlighted={offer.plano === "CREATOR"}
+                onSubscribe={subscribe}
+                onActivateMock={activateMock}
+              />
+            ))}
+          </div>
+        )}
+
+        {isPaid && (
+          <button className="plans-modal-cancel" onClick={cancel} disabled={!!pending}>
+            {pending?.kind === "cancel" ? "Cancelando..." : "Cancelar assinatura e voltar ao Gratuito"}
+          </button>
+        )}
 
         <div className="stripe-secure-footer">
           <ShieldCheck size={16} />
-          <span>Pagamento seguro processado e criptografado pela Stripe Payments</span>
+          <span>
+            Pagamento seguro pela Stripe. Cancele quando quiser.
+            {catalog && !catalog.stripeConfigurado && " (Stripe não configurado: checkout simulado.)"}
+          </span>
         </div>
       </div>
     </div>
   );
 };
+
+/** Modal de planos: só monta o conteúdo (e busca o catálogo) quando aberto */
+export const PremiumModal: React.FC<PremiumModalProps> = ({ isOpen, ...props }) =>
+  isOpen ? <PremiumModalContent {...props} /> : null;

@@ -249,7 +249,7 @@ export const ProfilePage: React.FC = () => {
                 </div>
                 {openPremiumModal && (
                   <button className="btn btn-sm btn-upgrade-gold" onClick={openPremiumModal}>
-                    <Sparkles size={14} /> Assinar Kreato Creator (R$ 19,90/mês)
+                    <Sparkles size={14} /> Ver planos Creator e Studio
                   </button>
                 )}
               </div>

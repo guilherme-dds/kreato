@@ -16,3 +16,10 @@ export function formatPercent(value: number | null | undefined): string {
   if (value === null || value === undefined) return "—";
   return `${value.toLocaleString("pt-BR", { maximumFractionDigits: 2 })}%`;
 }
+
+const currency = new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" });
+
+/** Centavos -> R$ 29,90 */
+export function formatCurrencyCents(cents: number): string {
+  return currency.format(cents / 100);
+}
