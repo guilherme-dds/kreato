@@ -111,6 +111,11 @@ services:
       STRIPE_PRICE_ID: ${STRIPE_PRICE_ID}
       STRIPE_PRICE_CREATOR: ${STRIPE_PRICE_CREATOR:-}
       STRIPE_PRICE_STUDIO: ${STRIPE_PRICE_STUDIO:-}
+      # E-mails de convite (mesmos provedores do auth-service)
+      BREVO_API_KEY: ${BREVO_API_KEY:-}
+      BREVO_SENDER_EMAIL: ${BREVO_SENDER_EMAIL:-}
+      MAILTRAP_TOKEN: ${MAILTRAP_TOKEN:-}
+      MAILTRAP_SENDER_EMAIL: ${MAILTRAP_SENDER_EMAIL:-}
       FRONTEND_URL: ${FRONTEND_URL}
     depends_on:
       - auth-service

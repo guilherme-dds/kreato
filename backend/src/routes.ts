@@ -8,6 +8,8 @@ import { ContentController } from "./controller/ContentController.js";
 import { AttachmentController, attachmentUpload } from "./controller/AttachmentController.js";
 import { MetricController } from "./controller/MetricController.js";
 import { DashboardController } from "./controller/DashboardController.js";
+import { TeamController } from "./controller/TeamController.js";
+import { InviteController } from "./controller/InviteController.js";
 import { AuthMiddleware } from "./middlewares/auth.js";
 import { WorkspaceMiddleware, requireWorkspaceRole } from "./middlewares/workspace.js";
 
@@ -26,6 +28,8 @@ const contentController = new ContentController();
 const attachmentController = new AttachmentController();
 const metricController = new MetricController();
 const dashboardController = new DashboardController();
+const teamController = new TeamController();
+const inviteController = new InviteController();
 
 export const router = Router();
 
@@ -88,6 +92,42 @@ router.patch(
 // Creator Dashboard (weekly goal, pipeline, agenda, ideas and recent performance)
 router.get("/dashboard", AuthMiddleware, WorkspaceMiddleware, (req, res) => dashboardController.show(req, res));
 router.get("/api/dashboard", AuthMiddleware, WorkspaceMiddleware, (req, res) => dashboardController.show(req, res));
+
+// Team Members Routes (current workspace)
+const manageTeam = requireWorkspaceRole("DONO", "GESTOR");
+
+router.get("/membros", AuthMiddleware, WorkspaceMiddleware, (req, res) => teamController.index(req, res));
+router.get("/api/membros", AuthMiddleware, WorkspaceMiddleware, (req, res) => teamController.index(req, res));
+
+router.post("/membros/sair", AuthMiddleware, WorkspaceMiddleware, (req, res) => teamController.leave(req, res));
+router.post("/api/membros/sair", AuthMiddleware, WorkspaceMiddleware, (req, res) => teamController.leave(req, res));
+
+router.patch("/membros/:id", AuthMiddleware, WorkspaceMiddleware, manageTeam, (req, res) => teamController.updateRole(req, res));
+router.patch("/api/membros/:id", AuthMiddleware, WorkspaceMiddleware, manageTeam, (req, res) => teamController.updateRole(req, res));
+
+router.delete("/membros/:id", AuthMiddleware, WorkspaceMiddleware, manageTeam, (req, res) => teamController.remove(req, res));
+router.delete("/api/membros/:id", AuthMiddleware, WorkspaceMiddleware, manageTeam, (req, res) => teamController.remove(req, res));
+
+// Invitations Routes
+// Público: a tela de aceite mostra o convite antes do login (o token de 32 bytes é o segredo)
+router.get("/convites/token/:token", (req, res) => inviteController.preview(req, res));
+router.get("/api/convites/token/:token", (req, res) => inviteController.preview(req, res));
+
+// Aceitar vale para qualquer usuário logado com o e-mail do convite (sem workspace atual)
+router.post("/convites/aceitar", AuthMiddleware, (req, res) => inviteController.accept(req, res));
+router.post("/api/convites/aceitar", AuthMiddleware, (req, res) => inviteController.accept(req, res));
+
+router.get("/convites", AuthMiddleware, WorkspaceMiddleware, manageTeam, (req, res) => inviteController.index(req, res));
+router.get("/api/convites", AuthMiddleware, WorkspaceMiddleware, manageTeam, (req, res) => inviteController.index(req, res));
+
+router.post("/convites", AuthMiddleware, WorkspaceMiddleware, manageTeam, (req, res) => inviteController.create(req, res));
+router.post("/api/convites", AuthMiddleware, WorkspaceMiddleware, manageTeam, (req, res) => inviteController.create(req, res));
+
+router.post("/convites/:id/reenviar", AuthMiddleware, WorkspaceMiddleware, manageTeam, (req, res) => inviteController.resend(req, res));
+router.post("/api/convites/:id/reenviar", AuthMiddleware, WorkspaceMiddleware, manageTeam, (req, res) => inviteController.resend(req, res));
+
+router.delete("/convites/:id", AuthMiddleware, WorkspaceMiddleware, manageTeam, (req, res) => inviteController.revoke(req, res));
+router.delete("/api/convites/:id", AuthMiddleware, WorkspaceMiddleware, manageTeam, (req, res) => inviteController.revoke(req, res));
 
 // Ideas Routes (scoped to the current workspace)
 router.get("/ideias", AuthMiddleware, WorkspaceMiddleware, (req, res) => ideaController.index(req, res));

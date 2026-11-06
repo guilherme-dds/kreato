@@ -20,14 +20,16 @@ model Usuario {
   fotoPerfil           String?  @db.Text
   criadoEm             DateTime @default(now())
 
-  refreshTokens  RefreshToken[]
-  resetTokens    ResetToken[]
-  workspacesDono Workspace[]       @relation("WorkspaceDono")
-  participacoes  MembroWorkspace[]
-  ideias         Ideia[]
-  conteudos      Conteudo[]
-  anexos         Anexo[]
-  metricas       Metrica[]
+  refreshTokens    RefreshToken[]
+  resetTokens      ResetToken[]
+  workspacesDono   Workspace[]       @relation("WorkspaceDono")
+  participacoes    MembroWorkspace[]
+  ideias           Ideia[]
+  conteudos        Conteudo[]
+  anexos           Anexo[]
+  metricas         Metrica[]
+  convitesEnviados Convite[]         @relation("ConviteRemetente")
+  convitesAceitos  Convite[]         @relation("ConviteAceitoPor")
 }
 
 model RefreshToken {
@@ -66,6 +68,7 @@ model Workspace {
   conteudos Conteudo[]
   anexos    Anexo[]
   metricas  Metrica[]
+  convites  Convite[]
 
   @@index([donoId])
 }
@@ -186,4 +189,30 @@ model Metrica {
   @@index([conteudoId, coletadoEm])
   @@index([workspaceId, coletadoEm])
   @@index([registradoPorId])
+}
+
+/// Convite para entrar em um workspace (plano Studio). Só o hash do token fica no banco.
+model Convite {
+  id             Int       @id @default(autoincrement())
+  workspaceId    String    @db.VarChar(36)
+  email          String    @db.VarChar(150)
+  papel          String    @default("EDITOR") @db.VarChar(20)
+  // SHA-256 (hex) do token enviado no link
+  tokenHash      String    @unique @db.VarChar(64)
+  // PENDENTE, ACEITO ou REVOGADO (expirado = PENDENTE com expiraEm no passado)
+  status         String    @default("PENDENTE") @db.VarChar(20)
+  expiraEm       DateTime
+  convidadoPorId String?   @db.VarChar(36)
+  aceitoPorId    String?   @db.VarChar(36)
+  aceitoEm       DateTime?
+  criadoEm       DateTime  @default(now())
+
+  workspace    Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  convidadoPor Usuario?  @relation("ConviteRemetente", fields: [convidadoPorId], references: [id], onDelete: SetNull)
+  aceitoPor    Usuario?  @relation("ConviteAceitoPor", fields: [aceitoPorId], references: [id], onDelete: SetNull)
+
+  @@index([workspaceId, status])
+  @@index([email, status])
+  @@index([convidadoPorId])
+  @@index([aceitoPorId])
 }
