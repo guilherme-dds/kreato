@@ -78,11 +78,11 @@ export const ResetPasswordPage: React.FC<ResetPasswordPageProps> = ({
 
             {success ? (
               <div style={{ textAlign: "center", padding: "1rem 0" }}>
-                <div className="empty-icon-wrapper" style={{ color: "#22c55e", background: "rgba(34, 197, 94, 0.12)" }}>
+                <div className="empty-icon-wrapper" style={{ color: "var(--approved)", background: "var(--approved-wash)" }}>
                   <CheckCircle size={36} />
                 </div>
                 <h3 style={{ fontSize: "1.25rem", margin: "1rem 0 0.5rem 0" }}>Senha Alterada!</h3>
-                <p style={{ color: "var(--text-secondary)", fontSize: "0.9rem", marginBottom: "1.8rem" }}>
+                <p style={{ color: "var(--ink-2)", fontSize: "0.9rem", marginBottom: "1.8rem" }}>
                   Sua senha foi redefinida com sucesso. Você já pode fazer login com suas novas credenciais.
                 </p>
                 <button
@@ -156,7 +156,7 @@ export const ResetPasswordPage: React.FC<ResetPasswordPageProps> = ({
                   onClick={onGoToLogin}
                   style={{
                     background: "none",
-                    color: "var(--text-muted)",
+                    color: "var(--ink-3)",
                     fontSize: "0.85rem",
                     textAlign: "center",
                     marginTop: "0.5rem",

@@ -43,7 +43,7 @@ services:
       dockerfile: Dockerfile
     container_name: kreato-nginx
     ports:
-      - "8209:80"
+      - "${KREATO_PORT:-8209}:80"
     depends_on:
       - frontend
       - backend

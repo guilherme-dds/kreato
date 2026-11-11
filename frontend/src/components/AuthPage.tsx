@@ -112,7 +112,7 @@ export const AuthPage: React.FC<AuthPageProps> = ({ showToast }) => {
 
             {resetSuccess ? (
               <div style={{ textAlign: "center", padding: "1rem 0" }}>
-                <p style={{ color: "var(--text-secondary)", marginBottom: "1.5rem" }}>
+                <p style={{ color: "var(--ink-2)", marginBottom: "1.5rem" }}>
                   Enviamos um e-mail para <strong>{email}</strong> com o link para redefinir sua senha.
                 </p>
 
@@ -167,7 +167,7 @@ export const AuthPage: React.FC<AuthPageProps> = ({ showToast }) => {
                             setIsForgotPassword(true);
                             setError(null);
                           }}
-                          style={{ fontSize: "0.78rem", color: "var(--accent-cyan)", background: "none" }}
+                          style={{ fontSize: "0.78rem", color: "var(--ink)", textDecoration: "underline", textUnderlineOffset: "3px", background: "none" }}
                         >
                           Esqueceu a senha?
                         </button>
@@ -211,7 +211,7 @@ export const AuthPage: React.FC<AuthPageProps> = ({ showToast }) => {
                     onClick={() => toggleMode(false)}
                     style={{
                       background: "none",
-                      color: "var(--text-muted)",
+                      color: "var(--ink-3)",
                       fontSize: "0.85rem",
                       textAlign: "center",
                       marginTop: "0.5rem",
