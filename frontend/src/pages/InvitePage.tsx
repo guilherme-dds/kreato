@@ -2,7 +2,7 @@ import React, { useEffect, useState } from "react";
 import { Link, useLocation, useNavigate, useSearchParams } from "react-router-dom";
 import { AlertTriangle, CheckCircle2, LogIn, LogOut, RefreshCw, UserPlus, Users } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
-import { KreatoLogo } from "../components/KreatoLogo";
+import { AuthLayout } from "../components/AuthLayout";
 import { acceptInviteApi, getInvitePreviewApi, setSelectedWorkspaceId } from "../api/backend";
 import type { ShowToast } from "../layouts/layoutContext";
 import type { InvitePreview } from "../types";
@@ -149,18 +149,8 @@ export const InvitePage: React.FC<InvitePageProps> = ({ showToast }) => {
   }
 
   return (
-    <div className="auth-page-container">
-      <div className="auth-page-backdrop" />
-      <div className="auth-page-content centered">
-        <div className="auth-form-side">
-          <div className="modal-card auth-page-card invite-card">
-            <div className="auth-logo-badge">
-              <KreatoLogo size={48} />
-            </div>
-            {body}
-          </div>
-        </div>
-      </div>
-    </div>
+    <AuthLayout scene="Convite">
+      <div className="invite-card">{body}</div>
+    </AuthLayout>
   );
 };

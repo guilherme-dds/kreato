@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { SquareKanban, X } from "lucide-react";
+import { X } from "lucide-react";
 import { useAuth } from "../../context/AuthContext";
 import { useLayoutContext } from "../../layouts/layoutContext";
 import { createContentApi, isPlanLimitError, planLimitResource } from "../../api/backend";
@@ -80,9 +80,7 @@ export const NewContentModal: React.FC<NewContentModalProps> = ({ initialStage, 
         </button>
 
         <div className="idea-modal-header">
-          <div className="page-header-icon">
-            <SquareKanban size={20} />
-          </div>
+          <p className="modal-kicker timecode">Nova cena</p>
           <h2 id="new-content-title">Novo conteúdo</h2>
         </div>
 

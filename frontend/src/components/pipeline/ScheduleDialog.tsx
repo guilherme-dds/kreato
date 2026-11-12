@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { CalendarClock, X } from "lucide-react";
+import { X } from "lucide-react";
 import { fromDateTimeLocal, toDateTimeLocal } from "../../utils/content";
 
 interface ScheduleDialogProps {
@@ -41,9 +41,7 @@ export const ScheduleDialog: React.FC<ScheduleDialogProps> = ({ title, onConfirm
           <X size={18} />
         </button>
         <div className="idea-modal-header">
-          <div className="page-header-icon">
-            <CalendarClock size={20} />
-          </div>
+          <p className="modal-kicker timecode">Agenda</p>
           <div>
             <h2 id="schedule-title">Agendar publicação</h2>
             <p className="schedule-dialog-subtitle">{title}</p>

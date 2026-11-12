@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { Lock, Eye, EyeOff, CheckCircle, ArrowLeft } from "lucide-react";
-import { KreatoLogo } from "./KreatoLogo";
+import { AuthLayout } from "./AuthLayout";
 import { confirmPasswordResetApi } from "../api/backend";
 
 interface ResetPasswordPageProps {
@@ -59,116 +59,100 @@ export const ResetPasswordPage: React.FC<ResetPasswordPageProps> = ({
   };
 
   return (
-    <div className="auth-page-container">
-      <div className="auth-page-backdrop" />
-      <div className="auth-page-content centered">
-        <div className="auth-form-side">
-          <div className="modal-card auth-page-card">
-            <div className="auth-header">
-              <div className="auth-logo-badge">
-                <KreatoLogo size={56} />
-              </div>
-              <h2>Redefinição de Senha</h2>
-              <p className="auth-subtitle">
-                {success
-                  ? "Sua senha foi atualizada!"
-                  : "Crie uma nova senha segura para sua conta"}
-              </p>
-            </div>
-
-            {success ? (
-              <div style={{ textAlign: "center", padding: "1rem 0" }}>
-                <div className="empty-icon-wrapper" style={{ color: "var(--approved)", background: "var(--approved-wash)" }}>
-                  <CheckCircle size={36} />
-                </div>
-                <h3 style={{ fontSize: "1.25rem", margin: "1rem 0 0.5rem 0" }}>Senha Alterada!</h3>
-                <p style={{ color: "var(--ink-2)", fontSize: "0.9rem", marginBottom: "1.8rem" }}>
-                  Sua senha foi redefinida com sucesso. Você já pode fazer login com suas novas credenciais.
-                </p>
-                <button
-                  type="button"
-                  className="submit-btn"
-                  onClick={onGoToLogin}
-                >
-                  <ArrowLeft size={18} style={{ marginRight: "0.5rem" }} />
-                  Ir para Login
-                </button>
-              </div>
-            ) : (
-              <form onSubmit={handleSubmit} className="auth-form">
-                {error && <div className="auth-error-alert">{error}</div>}
-
-                {!token && (
-                  <div className="auth-error-alert">
-                    Link de redefinição inválido ou token ausente na URL.
-                  </div>
-                )}
-
-                <div className="input-group">
-                  <label>Nova Senha</label>
-                  <div className="input-wrapper">
-                    <Lock className="input-icon" size={18} />
-                    <input
-                      type={showPassword ? "text" : "password"}
-                      placeholder="••••••••"
-                      value={newPassword}
-                      onChange={(e) => setNewPassword(e.target.value)}
-                      required
-                    />
-                    <button
-                      type="button"
-                      className="password-toggle"
-                      onClick={() => setShowPassword(!showPassword)}
-                    >
-                      {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
-                    </button>
-                  </div>
-                </div>
-
-                <div className="input-group">
-                  <label>Confirmar Nova Senha</label>
-                  <div className="input-wrapper">
-                    <Lock className="input-icon" size={18} />
-                    <input
-                      type={showPassword ? "text" : "password"}
-                      placeholder="••••••••"
-                      value={confirmPassword}
-                      onChange={(e) => setConfirmPassword(e.target.value)}
-                      required
-                    />
-                  </div>
-                </div>
-
-                <button
-                  type="submit"
-                  className="submit-btn"
-                  disabled={isLoading || !token}
-                >
-                  {isLoading ? (
-                    <span className="btn-spinner"></span>
-                  ) : (
-                    "Redefinir Senha"
-                  )}
-                </button>
-
-                <button
-                  type="button"
-                  onClick={onGoToLogin}
-                  style={{
-                    background: "none",
-                    color: "var(--ink-3)",
-                    fontSize: "0.85rem",
-                    textAlign: "center",
-                    marginTop: "0.5rem",
-                  }}
-                >
-                  Cancelar e voltar
-                </button>
-              </form>
-            )}
-          </div>
-        </div>
+    <AuthLayout scene="Nova senha">
+      <div className="auth-header">
+        <h2>Redefinição de senha</h2>
+        <p className="auth-subtitle">
+          {success
+            ? "Sua senha foi atualizada!"
+            : "Crie uma nova senha segura para sua conta"}
+        </p>
       </div>
-    </div>
+
+      {success ? (
+        <div className="auth-done">
+          <div className="auth-done-icon">
+            <CheckCircle size={28} />
+          </div>
+          <h3>Senha alterada</h3>
+          <p>
+            Sua senha foi redefinida com sucesso. Você já pode fazer login com suas novas credenciais.
+          </p>
+          <button
+            type="button"
+            className="submit-btn"
+            onClick={onGoToLogin}
+          >
+            <ArrowLeft size={18} />
+            Ir para o login
+          </button>
+        </div>
+      ) : (
+        <form onSubmit={handleSubmit} className="auth-form">
+          {error && <div className="auth-error-alert">{error}</div>}
+
+          {!token && (
+            <div className="auth-error-alert">
+              Link de redefinição inválido ou token ausente na URL.
+            </div>
+          )}
+
+          <div className="input-group">
+            <label>Nova senha</label>
+            <div className="input-wrapper">
+              <Lock className="input-icon" size={18} />
+              <input
+                type={showPassword ? "text" : "password"}
+                placeholder="••••••••"
+                value={newPassword}
+                onChange={(e) => setNewPassword(e.target.value)}
+                required
+              />
+              <button
+                type="button"
+                className="password-toggle"
+                onClick={() => setShowPassword(!showPassword)}
+              >
+                {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+              </button>
+            </div>
+          </div>
+
+          <div className="input-group">
+            <label>Confirmar Nova senha</label>
+            <div className="input-wrapper">
+              <Lock className="input-icon" size={18} />
+              <input
+                type={showPassword ? "text" : "password"}
+                placeholder="••••••••"
+                value={confirmPassword}
+                onChange={(e) => setConfirmPassword(e.target.value)}
+                required
+              />
+            </div>
+          </div>
+
+          <button
+            type="submit"
+            className="submit-btn"
+            disabled={isLoading || !token}
+          >
+            {isLoading ? (
+              <span className="btn-spinner"></span>
+            ) : (
+              "Redefinir senha"
+            )}
+          </button>
+
+          <button
+            type="button"
+            onClick={onGoToLogin}
+            className="auth-secondary"
+          >
+            Cancelar e voltar
+          </button>
+        </form>
+      )}
+    </AuthLayout>
   );
 };

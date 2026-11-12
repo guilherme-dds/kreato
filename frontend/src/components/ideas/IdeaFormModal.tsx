@@ -1,10 +1,10 @@
 import React, { useEffect, useState } from "react";
-import { Lightbulb, X } from "lucide-react";
+import { X } from "lucide-react";
 import { useAuth } from "../../context/AuthContext";
 import { useLayoutContext } from "../../layouts/layoutContext";
 import { createIdeaApi, isPlanLimitError, planLimitResource, updateIdeaApi } from "../../api/backend";
 import type { Idea, IdeaInput, IdeaStatus, Platform } from "../../types";
-import { IDEA_STATUSES, IDEA_STATUS_LABELS, PLATFORMS, PLATFORM_LABELS, parseTagsInput } from "../../utils/content";
+import { IDEA_STATUSES, IDEA_STATUS_LABELS, PLATFORMS, PLATFORM_LABELS, parseTagsInput, sceneNumber } from "../../utils/content";
 
 // Espelham os limites validados pelo IdeaController
 const TITLE_MAX = 150;
@@ -92,9 +92,7 @@ export const IdeaFormModal: React.FC<IdeaFormModalProps> = ({ idea, onClose, onS
         </button>
 
         <div className="idea-modal-header">
-          <div className="page-header-icon">
-            <Lightbulb size={20} />
-          </div>
+          <p className="modal-kicker timecode">{isEditing && idea ? `IDEIA ${sceneNumber(idea.id)}` : "Nova ficha"}</p>
           <h2 id="idea-modal-title">{isEditing ? "Editar ideia" : "Nova ideia"}</h2>
         </div>
 
