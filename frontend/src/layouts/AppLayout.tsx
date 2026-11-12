@@ -219,7 +219,7 @@ export const AppLayout: React.FC<AppLayoutProps> = ({ showToast }) => {
           ))}
         </nav>
 
-        <UpNext token={token} refreshKey={`${selectedId ?? "pessoal"}:${location.pathname}`} />
+        <UpNext token={token} refreshKey={selectedId ?? "pessoal"} />
 
         <div className="sidebar-footer">
           <NavLink to="/planos" className={`sidebar-plan ${isPaid ? "is-paid" : ""}`}>

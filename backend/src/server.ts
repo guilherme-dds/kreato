@@ -8,6 +8,11 @@ const app = express();
 
 applySecurity(app);
 
+// Health check do container (não toca no banco)
+app.get(["/health", "/api/health"], (_req, res) => {
+  res.json({ status: "ok" });
+});
+
 // Documentação OpenAPI (fora de produção ou com ENABLE_API_DOCS=true): Swagger UI em /api/docs e o JSON em /api/openapi.json
 if (apiDocsEnabled) {
   app.get(["/openapi.json", "/api/openapi.json"], (_req, res) => {
@@ -23,6 +28,8 @@ app.use(["/stripe/webhook", "/api/stripe/webhook"], express.raw({ type: "applica
 app.use(express.json());
 app.use(router);
 
-app.listen(3333, () =>
-  console.log("server is running on http://localhost:3333"),
+const PORT = Number(process.env.PORT) || 3333;
+
+app.listen(PORT, () =>
+  console.log(`server is running on http://localhost:${PORT}`),
 );

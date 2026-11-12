@@ -29,6 +29,9 @@ import {
 import type { Idea, IdeaStatus, IdeasResponse, Platform } from "../types";
 import { IDEA_STATUS_LABELS, PLATFORMS, PLATFORM_LABELS, formatRelativeDate, sceneNumber } from "../utils/content";
 
+/** Ideias por página (o servidor devolve as mais recentes primeiro) */
+const IDEAS_PAGE_SIZE = 60;
+
 type StatusTab = "" | IdeaStatus;
 
 const STATUS_TABS: { value: StatusTab; label: string }[] = [
@@ -52,6 +55,10 @@ export const IdeasPage: React.FC = () => {
   const [busca, setBusca] = useState("");
 
   const [data, setData] = useState<IdeasResponse | null>(null);
+  // Paginação: "carregar mais" amplia o limite; mudar um filtro volta para a primeira página
+  const filterKey = `${status}|${plataforma}|${tag}|${busca}`;
+  const [page, setPage] = useState({ key: filterKey, size: IDEAS_PAGE_SIZE });
+  const pageSize = page.key === filterKey ? page.size : IDEAS_PAGE_SIZE;
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [busyId, setBusyId] = useState<number | null>(null);
@@ -72,7 +79,7 @@ export const IdeasPage: React.FC = () => {
     setIsLoading(true);
     setError(null);
     try {
-      const response = await getIdeasApi({ status, plataforma, tag, busca }, token);
+      const response = await getIdeasApi({ status, plataforma, tag, busca, limite: pageSize }, token);
       if (current === requestId.current) setData(response);
     } catch (err) {
       if (current === requestId.current) {
@@ -81,7 +88,7 @@ export const IdeasPage: React.FC = () => {
     } finally {
       if (current === requestId.current) setIsLoading(false);
     }
-  }, [status, plataforma, tag, busca, token]);
+  }, [status, plataforma, tag, busca, pageSize, token]);
 
   useEffect(() => {
     loadIdeas();
@@ -361,6 +368,19 @@ export const IdeasPage: React.FC = () => {
               </article>
             );
           })}
+        </div>
+      )}
+
+      {data?.temMais && ideias.length > 0 && (
+        <div className="ideas-load-more">
+          <button
+            type="button"
+            className="btn btn-secondary"
+            onClick={() => setPage({ key: filterKey, size: pageSize + IDEAS_PAGE_SIZE })}
+            disabled={isLoading}
+          >
+            {isLoading ? "Carregando..." : "Carregar mais ideias"}
+          </button>
         </div>
       )}
 

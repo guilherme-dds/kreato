@@ -11,6 +11,11 @@ const app = express();
 applySecurity(app);
 app.use(express.json({ limit: "100kb" }));
 
+// Health check do container (não toca no banco)
+app.get(["/health", "/api/auth/health"], (_req, res) => {
+  res.json({ status: "ok" });
+});
+
 if (apiDocsEnabled) {
   app.use(["/auth/apidocs", "/auth/api-docs", "/auth/docs"], swaggerUi.serve, swaggerUi.setup(authSwaggerDocument));
   app.get(["/auth/openapi.json", "/openapi.json"], (_req, res) => {

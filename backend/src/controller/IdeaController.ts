@@ -4,7 +4,7 @@ import type { Prisma } from "../generated/prisma/client.js";
 import prisma from "../utils/prisma.js";
 import { logEvent } from "../utils/logger.js";
 import { getPlanLimits, isWithinLimit, rejectPlanLimit } from "../utils/plans.js";
-import { parsePositiveInt, queryString } from "../utils/request.js";
+import { parsePositiveInt, queryLimit, queryString } from "../utils/request.js";
 import { canManageWorkspace } from "../utils/workspaces.js";
 import {
   IDEA_STATUSES,
@@ -110,10 +110,15 @@ function rejectIdeaLimit(req: Request, res: Response, usage: number) {
   );
 }
 
+/** Página padrão da lista de ideias; "carregar mais" pede um limite maior */
+const DEFAULT_IDEAS_PAGE = 60;
+const MAX_IDEAS_PAGE = 1000;
+
 export class IdeaController {
   /**
    * Lista as ideias do workspace com filtros (status, plataforma, tag, busca) e o uso do plano.
    * Sem filtro de status, retorna apenas as ideias não arquivadas.
+   * Paginada: as `limite` (padrão 60) mais recentes; `temMais` indica se há outras.
    */
   async index(req: Request, res: Response) {
     try {
@@ -137,15 +142,25 @@ export class IdeaController {
         ];
       }
 
-      const [ideias, ideiasAtivas] = await Promise.all([
-        prisma.ideia.findMany({ where, select: ideaSelect, orderBy: { atualizadoEm: "desc" } }),
+      const pageSize = queryLimit(req.query.limite, DEFAULT_IDEAS_PAGE, MAX_IDEAS_PAGE);
+      const [page, ideiasAtivas] = await Promise.all([
+        // Uma a mais que a página só para saber se existem outras
+        prisma.ideia.findMany({
+          where,
+          select: ideaSelect,
+          orderBy: [{ atualizadoEm: "desc" }, { id: "desc" }],
+          take: pageSize + 1,
+        }),
         countActiveIdeas(req.workspaceId),
       ]);
 
+      const temMais = page.length > pageSize;
+      const ideias = temMais ? page.slice(0, pageSize) : page;
       const limite = getPlanLimits(req.workspacePlan).ideias;
 
       return res.json({
         ideias: ideias.map(serializeIdea),
+        temMais,
         uso: { ideiasAtivas, limite: Number.isFinite(limite) ? limite : null },
       });
     } catch (error: any) {

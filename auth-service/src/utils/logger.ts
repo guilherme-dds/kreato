@@ -4,13 +4,13 @@ import { Redis } from "ioredis";
 const REDIS_URL = process.env.REDIS_URL || "redis://localhost:6379";
 const STREAM_KEY = "logs:stream";
 
+// Reconecta para sempre (com espera crescente até 10s): se o Redis reiniciar, a auditoria volta sozinha.
+// Sem fila offline: enquanto estiver fora, o XADD falha na hora em vez de segurar a requisição.
 const redis = new Redis(REDIS_URL, {
   lazyConnect: true,
   maxRetriesPerRequest: 1,
-  retryStrategy(times) {
-    if (times > 3) return null;
-    return 1000;
-  },
+  enableOfflineQueue: false,
+  retryStrategy: (times) => Math.min(times * 1000, 10_000),
 });
 
 redis.on("error", () => {
@@ -59,7 +59,7 @@ export async function logEvent({
     const timestamp = new Date().toISOString();
     const user_id = userId ? String(userId) : "anonymous";
 
-    if (redis.status !== "ready" && redis.status !== "connecting") {
+    if (redis.status === "wait" || redis.status === "end") {
       await redis.connect().catch(() => {});
     }
 

@@ -14,7 +14,7 @@ import {
   forbiddenFields,
   isManager,
 } from "../utils/permissions.js";
-import { parsePositiveInt, queryString } from "../utils/request.js";
+import { parsePositiveInt, queryLimit, queryString } from "../utils/request.js";
 import { deleteAssets } from "../utils/minio.js";
 import {
   CONTENT_FORMATS,
@@ -233,11 +233,19 @@ function isUniqueViolation(error: unknown): boolean {
   return error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002";
 }
 
+/** Teto de segurança de qualquer listagem de conteúdos */
+const MAX_LIST = 1000;
+/** Quantos publicados o board carrega por padrão (os mais recentes da coluna) */
+const DEFAULT_PUBLISHED = 100;
+const MAX_PUBLISHED = 500;
+
 export class ContentController {
   /**
    * Lista os conteúdos do workspace (kanban e calendário).
    * Filtros: etapa (uma ou várias separadas por vírgula), plataforma, formato, busca,
    * de/ate (intervalo de dataPublicacao).
+   * Sem filtro de etapa nem de data (o board), a coluna Publicado vem limitada aos `publicados`
+   * mais recentes (padrão 100) e a resposta traz o total em `publicados`.
    */
   async index(req: Request, res: Response) {
     try {
@@ -269,15 +277,43 @@ export class ContentController {
         where.OR = [{ titulo: { contains: busca } }, { roteiro: { contains: busca } }, { legenda: { contains: busca } }];
       }
 
-      const [conteudos, conteudosAtivos] = await Promise.all([
-        prisma.conteudo.findMany({ where, select: listSelect, orderBy: [{ posicao: "asc" }, { id: "asc" }] }),
-        countActiveContents(req.workspaceId),
-      ]);
+      const orderBy: Prisma.ConteudoOrderByWithRelationInput[] = [{ posicao: "asc" }, { id: "asc" }];
+      const isBoard = etapas.length === 0 && !de && !ate;
 
+      let conteudos;
+      let publicados: { total: number; exibidos: number } | undefined;
+
+      if (isBoard) {
+        // Publicados se acumulam para sempre: o board recebe só os últimos da coluna
+        const publishedLimit = queryLimit(req.query.publicados, DEFAULT_PUBLISHED, MAX_PUBLISHED);
+        const publishedWhere: Prisma.ConteudoWhereInput = { ...where, etapa: "PUBLICADO" };
+        const [emProducao, recentesPublicados, totalPublicados] = await Promise.all([
+          prisma.conteudo.findMany({
+            where: { ...where, etapa: { not: "PUBLICADO" } },
+            select: listSelect,
+            orderBy,
+            take: MAX_LIST,
+          }),
+          prisma.conteudo.findMany({
+            where: publishedWhere,
+            select: listSelect,
+            orderBy: [{ posicao: "desc" }, { id: "desc" }],
+            take: publishedLimit,
+          }),
+          prisma.conteudo.count({ where: publishedWhere }),
+        ]);
+        conteudos = [...emProducao, ...recentesPublicados.reverse()];
+        publicados = { total: totalPublicados, exibidos: recentesPublicados.length };
+      } else {
+        conteudos = await prisma.conteudo.findMany({ where, select: listSelect, orderBy, take: MAX_LIST });
+      }
+
+      const conteudosAtivos = await countActiveContents(req.workspaceId);
       const limite = getPlanLimits(req.workspacePlan).conteudosAtivos;
 
       return res.json({
         conteudos: conteudos.map((conteudo) => serializeContent(req, conteudo)),
+        ...(publicados ? { publicados } : {}),
         permissoes: { papel: req.workspaceRole, criarEm: creatableStages(req.workspaceRole) },
         uso: { conteudosAtivos, limite: Number.isFinite(limite) ? limite : null },
       });

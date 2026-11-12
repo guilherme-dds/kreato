@@ -75,6 +75,13 @@ export function findMembership(workspaceId: string, userId: string): Promise<Mem
  * Cobre usuários cadastrados antes da existência de workspaces e cadastros novos.
  */
 export async function ensurePersonalWorkspace(userId: string): Promise<MembershipWithWorkspace> {
+  // Caminho de toda requisição sem X-Workspace-Id: uma consulta só quando tudo já existe
+  const existing = await prisma.membroWorkspace.findFirst({
+    where: { usuarioId: userId, workspace: { pessoalDoUsuarioId: userId } },
+    include: membershipInclude,
+  });
+  if (existing) return existing;
+
   let workspace = await prisma.workspace.findUnique({
     where: { pessoalDoUsuarioId: userId },
     select: { id: true },

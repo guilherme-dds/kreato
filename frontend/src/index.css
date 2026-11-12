@@ -2329,6 +2329,18 @@ time, .timecode {
   margin-top: 1.2rem;
 }
 
+.ideas-load-more {
+  display: flex;
+  justify-content: center;
+  margin-top: 16px;
+}
+
+.ideas-load-more .btn {
+  flex: 0 0 auto;
+  padding: 10px 20px;
+  border-radius: var(--radius-sm);
+}
+
 .ideas-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));

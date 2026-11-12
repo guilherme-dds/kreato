@@ -55,10 +55,14 @@ export interface IdeaFilters {
   plataforma?: Platform | "";
   tag?: string;
   busca?: string;
+  /** Quantas ideias trazer (as mais recentes); o servidor usa 60 por padrão */
+  limite?: number;
 }
 
 export interface IdeasResponse {
   ideias: Idea[];
+  /** Há ideias além das retornadas (use um limite maior para carregar mais) */
+  temMais: boolean;
   uso: { ideiasAtivas: number; limite: number | null };
 }
 
@@ -281,10 +285,14 @@ export interface ContentFilters {
   busca?: string;
   de?: string;
   ate?: string;
+  /** No board (sem etapa nem datas): quantos publicados mais recentes trazer */
+  publicados?: number;
 }
 
 export interface ContentsResponse {
   conteudos: Content[];
+  /** Só no board: a coluna Publicado vem limitada aos mais recentes */
+  publicados?: { total: number; exibidos: number };
   uso: { conteudosAtivos: number; limite: number | null };
   permissoes: { papel: WorkspaceRole; criarEm: ContentStage[] };
 }

@@ -19,6 +19,8 @@ import {
 const SEARCH_DEBOUNCE_MS = 250;
 // A coluna "Publicado" cresce sem parar; o histórico completo fica no calendário
 const PUBLISHED_VISIBLE_LIMIT = 20;
+/** Publicados trazidos do servidor: os filtros do board procuram entre eles */
+const PUBLISHED_FETCH_LIMIT = 100;
 
 interface DropTarget {
   stage: ContentStage;
@@ -58,6 +60,8 @@ export const PipelinePage: React.FC = () => {
   const { showToast, openPlans } = useLayoutContext();
 
   const [contents, setContents] = useState<Content[]>([]);
+  /** Total de publicados no servidor (o board só recebe os mais recentes) */
+  const [publishedTotal, setPublishedTotal] = useState<number | null>(null);
   const [limit, setLimit] = useState<number | null>(null);
   const [creatableStages, setCreatableStages] = useState<ContentStage[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -86,9 +90,10 @@ export const PipelinePage: React.FC = () => {
     setIsLoading(true);
     setError(null);
     try {
-      const response = await getContentsApi({}, token);
+      const response = await getContentsApi({ publicados: PUBLISHED_FETCH_LIMIT }, token);
       if (current !== requestId.current) return;
       setContents(response.conteudos);
+      setPublishedTotal(response.publicados?.total ?? null);
       setLimit(response.uso.limite);
       setCreatableStages(response.permissoes.criarEm);
     } catch (err) {
@@ -308,7 +313,10 @@ export const PipelinePage: React.FC = () => {
           {CONTENT_STAGES.map((stage, stageIndex) => {
             const column = columns.get(stage) ?? [];
             const visible = visibleCards(stage);
-            const hiddenPublished = hasFilters ? 0 : column.length - visible.length;
+            // Publicados fora da tela: os mais antigos que o servidor nem enviou também contam
+            const publishedOnServer =
+              stage === "PUBLICADO" && publishedTotal !== null ? Math.max(publishedTotal, column.length) : column.length;
+            const hiddenPublished = hasFilters ? 0 : publishedOnServer - visible.length;
             const isTarget = dropTarget?.stage === stage;
             const isLocked = dragging !== null && !dragging.permissoes.moverPara.includes(stage);
             const cardsWithoutDragged = visible.filter((c) => c.id !== dragging?.id);
@@ -320,7 +328,7 @@ export const PipelinePage: React.FC = () => {
                     {String(stageIndex + 1).padStart(2, "0")}
                   </span>
                   <h2>{CONTENT_STAGE_LABELS[stage]}</h2>
-                  <span className="kanban-column-count">{hasFilters ? `${visible.length}/${column.length}` : column.length}</span>
+                  <span className="kanban-column-count">{hasFilters ? `${visible.length}/${column.length}` : publishedOnServer}</span>
                   {creatableStages.includes(stage) && (
                     <button
                       className="idea-action kanban-column-add"

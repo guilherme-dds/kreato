@@ -1,6 +1,6 @@
-import React, { useEffect, useState } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import { NavLink } from "react-router-dom";
-import { getContentsApi } from "../api/backend";
+import { CONTENTS_CHANGED_EVENT, getContentsApi } from "../api/backend";
 import { isSameDay, slateDay, slateTime } from "../utils/dates";
 import type { Content } from "../types";
 
@@ -8,7 +8,7 @@ const MAX_ITEMS = 3;
 
 interface UpNextProps {
   token: string | null;
-  /** Muda quando o workspace ou a página mudam, para a lista refletir agendamentos recentes */
+  /** Muda quando o workspace muda; edições de conteúdo e a volta para a aba também recarregam */
   refreshKey: string;
 }
 
@@ -20,15 +20,19 @@ type State =
 /** "Próximas no ar": as próximas publicações agendadas do workspace, como uma ordem do dia de estúdio */
 export const UpNext: React.FC<UpNextProps> = ({ token, refreshKey }) => {
   const [state, setState] = useState<State>({ status: "loading" });
+  // O token renova a cada 15 min; a busca usa o mais novo sem refazer o efeito
+  const tokenRef = useRef(token);
+  tokenRef.current = token;
+  const requestId = useRef(0);
 
-  useEffect(() => {
-    let cancelled = false;
+  const load = useCallback(() => {
+    const current = ++requestId.current;
     const startOfToday = new Date();
     startOfToday.setHours(0, 0, 0, 0);
 
-    getContentsApi({ etapa: "AGENDADO", de: startOfToday.toISOString() }, token)
+    getContentsApi({ etapa: "AGENDADO", de: startOfToday.toISOString() }, tokenRef.current)
       .then((data) => {
-        if (cancelled) return;
+        if (current !== requestId.current) return;
         const items = data.conteudos
           .filter((content) => content.dataPublicacao)
           .sort((a, b) => (a.dataPublicacao ?? "").localeCompare(b.dataPublicacao ?? ""))
@@ -36,13 +40,32 @@ export const UpNext: React.FC<UpNextProps> = ({ token, refreshKey }) => {
         setState({ status: "ready", items });
       })
       .catch(() => {
-        if (!cancelled) setState({ status: "error" });
+        if (current === requestId.current) setState({ status: "error" });
       });
+  }, []);
 
-    return () => {
-      cancelled = true;
+  useEffect(() => {
+    load();
+  }, [load, refreshKey]);
+
+  // Recarrega quando um conteúdo muda e quando a pessoa volta para a aba (agenda de outros membros)
+  useEffect(() => {
+    let timeout: ReturnType<typeof setTimeout> | undefined;
+    const debounced = () => {
+      clearTimeout(timeout);
+      timeout = setTimeout(load, 400);
     };
-  }, [token, refreshKey]);
+    const onVisible = () => {
+      if (document.visibilityState === "visible") debounced();
+    };
+    window.addEventListener(CONTENTS_CHANGED_EVENT, debounced);
+    document.addEventListener("visibilitychange", onVisible);
+    return () => {
+      clearTimeout(timeout);
+      window.removeEventListener(CONTENTS_CHANGED_EVENT, debounced);
+      document.removeEventListener("visibilitychange", onVisible);
+    };
+  }, [load]);
 
   const now = new Date();
 

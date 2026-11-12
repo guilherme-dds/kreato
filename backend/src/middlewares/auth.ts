@@ -19,6 +19,8 @@ export async function AuthMiddleware(
     return res.status(401).json({ error: "Token invalid" });
   }
 
+  // Com o segredo compartilhado, a verificação é local: um token inválido ou vencido
+  // recebe 401 na hora, sem ida ao auth-service (o frontend então renova a sessão).
   const JWT_SECRET = process.env.JWT_SECRET;
   if (JWT_SECRET) {
     try {
@@ -31,10 +33,12 @@ export async function AuthMiddleware(
         return next();
       }
     } catch {
-      // If local verification fails due to secret mismatch or error, proceed to try auth-service
+      // assinatura inválida ou token vencido
     }
+    return res.status(401).json({ error: "Token invalid" });
   }
 
+  // Sem JWT_SECRET neste serviço: delega a verificação ao auth-service
   const authServiceUrl = process.env.AUTH_SERVICE_URL || "http://auth-service:3334";
 
   try {
@@ -45,6 +49,7 @@ export async function AuthMiddleware(
         Authorization: authorization,
       },
       body: JSON.stringify({ token }),
+      signal: AbortSignal.timeout(3000),
     });
 
     const data = (await response.json()) as { valid?: boolean; userId?: string; role?: string; error?: string };
@@ -57,7 +62,7 @@ export async function AuthMiddleware(
       return next();
     }
 
-    return res.status(401).json({ error: data.error || "Token invalid" });
+    return res.status(401).json({ error: "Token invalid" });
   } catch (error) {
     console.error("Error verifying token with auth-service:", error);
     return res.status(401).json({ error: "Token invalid" });

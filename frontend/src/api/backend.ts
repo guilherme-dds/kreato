@@ -118,6 +118,14 @@ export function setSelectedWorkspaceId(workspaceId: string | null): void {
   }
 }
 
+/** Disparado depois de criar, editar, mover ou excluir conteúdos (ex.: "Próximas no ar" se atualiza) */
+export const CONTENTS_CHANGED_EVENT = "contents:changed";
+
+function changesContents(path: string, method: string): boolean {
+  if (method === "GET") return false;
+  return /^\/conteudos(\/\d+(\/etapa)?)?(\?|$)/.test(path) || /^\/ideias\/\d+\/converter/.test(path);
+}
+
 /** Disparado quando o servidor recusa o workspace salvo (ex.: a pessoa foi removida da equipe) */
 export const WORKSPACE_LOST_EVENT = "workspace:lost";
 
@@ -352,6 +360,10 @@ async function authorizedFetch(path: string, options: RequestInit = {}, token?: 
     window.dispatchEvent(new Event("auth:unauthorized"));
   }
 
+  if (response.ok && changesContents(path, (options.method || "GET").toUpperCase())) {
+    window.dispatchEvent(new Event(CONTENTS_CHANGED_EVENT));
+  }
+
   // Perdeu o acesso ao workspace salvo: descarta a seleção para as próximas requisições
   if (response.status === 403 && workspaceId) {
     const body = await response.clone().json().catch(() => null);
@@ -486,6 +498,7 @@ function toQueryString(filters: object): string {
   const params = new URLSearchParams();
   Object.entries(filters).forEach(([key, value]) => {
     if (typeof value === "string" && value) params.set(key, value);
+    else if (typeof value === "number" && Number.isFinite(value)) params.set(key, String(value));
   });
   const query = params.toString();
   return query ? `?${query}` : "";

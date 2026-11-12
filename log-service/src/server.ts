@@ -11,6 +11,11 @@ const app = express();
 applySecurity(app);
 app.use(express.json());
 
+// Health check do container
+app.get("/health", (_req, res) => {
+  res.json({ status: "ok" });
+});
+
 if (apiDocsEnabled) {
   app.use(["/log/apidocs", "/log/api-docs", "/log/docs"], swaggerUi.serve, swaggerUi.setup(logSwaggerDocument));
   app.get(["/log/openapi.json", "/openapi.json"], (_req, res) => {
