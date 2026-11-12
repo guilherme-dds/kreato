@@ -240,7 +240,6 @@ export const PipelinePage: React.FC = () => {
   return (
     <div className="page page-wide">
       <PageHeader
-        icon={SquareKanban}
         title="Pipeline"
         description="Acompanhe cada conteúdo da ideia à publicação. Arraste os cards entre as etapas."
         actions={

@@ -245,7 +245,6 @@ export const DashboardPage: React.FC = () => {
 
   const header = (
     <PageHeader
-      icon={Sparkles}
       title={`${greeting()}, ${firstName}!`}
       description="Seu ritmo de publicação, o que vem pela frente e como seus conteúdos estão indo."
       actions={

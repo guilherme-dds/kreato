@@ -183,7 +183,6 @@ export const CalendarPage: React.FC = () => {
   return (
     <div className="page page-wide">
       <PageHeader
-        icon={CalendarDays}
         title="Calendário"
         description="Planeje a semana, mantenha a constância e veja o que vai ao ar em cada dia."
       />

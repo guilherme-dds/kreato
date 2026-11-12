@@ -229,7 +229,6 @@ export const TeamPage: React.FC = () => {
   return (
     <div className="page page-wide team-page">
       <PageHeader
-        icon={Users}
         title="Equipe"
         description={`Quem trabalha em ${workspaceName} e o que cada pessoa pode fazer no pipeline.`}
       />

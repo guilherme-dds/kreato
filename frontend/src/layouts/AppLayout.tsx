@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import { NavLink, Outlet, useLocation, useNavigate } from "react-router-dom";
-import { Crown, Lock, LogOut, Menu, ShieldCheck, Sparkles, User as UserIcon, X } from "lucide-react";
+import { Crown, Lock, LogOut, Menu, ShieldCheck, X } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
 import {
   WORKSPACE_LOST_EVENT,
@@ -11,12 +11,19 @@ import {
   verifyStripeSessionApi,
 } from "../api/backend";
 import { KreatoLogo } from "../components/KreatoLogo";
-import { PremiumBadge } from "../components/PremiumBadge";
+import { UpNext } from "../components/UpNext";
 import { WorkspaceSwitcher } from "../components/WorkspaceSwitcher";
-import { MAIN_NAV } from "../navigation";
+import { MAIN_NAV, NAV_GROUP_LABELS, type NavGroup, type NavItem } from "../navigation";
 import { PLAN_LABELS, PLANS, getUserPlan, isPaidPlan } from "../utils/plans";
 import type { LayoutContext, ShowToast } from "./layoutContext";
 import type { PlanResource, WorkspaceSummary } from "../types";
+
+const NAV_GROUP_ORDER: NavGroup[] = ["inicio", "producao", "resultados", "estudio"];
+
+const navGroups: { group: NavGroup; items: NavItem[] }[] = NAV_GROUP_ORDER.map((group) => ({
+  group,
+  items: MAIN_NAV.filter((item) => item.group === group),
+}));
 
 interface AppLayoutProps {
   showToast: ShowToast;
@@ -158,11 +165,8 @@ export const AppLayout: React.FC<AppLayoutProps> = ({ showToast }) => {
       <aside className="sidebar">
         <div className="sidebar-header">
           <NavLink to="/" className="sidebar-brand">
-            <KreatoLogo size={38} />
-            <div className="brand-text">
-              <span className="brand-title">Kreato</span>
-              <span className="brand-subtitle">Central do Criador</span>
-            </div>
+            <KreatoLogo size={30} />
+            <span className="brand-title">Kreato</span>
           </NavLink>
           <button
             className="icon-button sidebar-close"
@@ -175,73 +179,66 @@ export const AppLayout: React.FC<AppLayoutProps> = ({ showToast }) => {
 
         <WorkspaceSwitcher workspaces={workspaces} active={activeWorkspace} onSelect={switchWorkspace} />
 
-        <nav className="sidebar-nav">
-          {MAIN_NAV.map((item) => {
-            const Icon = item.icon;
-            const isLocked = item.requiredPlan && PLANS.indexOf(workspacePlan) < PLANS.indexOf(item.requiredPlan);
-            return (
-              <NavLink
-                key={item.path}
-                to={item.path}
-                end={item.path === "/"}
-                className={({ isActive }) => `sidebar-link ${isActive ? "active" : ""}`}
-              >
-                <Icon size={19} />
-                <span>{item.label}</span>
-                {isLocked && item.requiredPlan && (
-                  <span className="sidebar-link-badge" title={`Disponível no ${PLAN_LABELS[item.requiredPlan]}`}>
-                    <Lock size={10} /> {item.requiredPlan}
-                  </span>
-                )}
-              </NavLink>
-            );
-          })}
-          {isAdmin && (
-            <NavLink to="/admin" className={({ isActive }) => `sidebar-link sidebar-link-admin ${isActive ? "active" : ""}`}>
-              <ShieldCheck size={19} />
-              <span>Admin</span>
-            </NavLink>
-          )}
+        <nav className="sidebar-nav" aria-label="Principal">
+          {navGroups.map(({ group, items }) => (
+            <div key={group} className="sidebar-group">
+              {NAV_GROUP_LABELS[group] && <h2 className="sidebar-label">{NAV_GROUP_LABELS[group]}</h2>}
+              {items.map((item) => {
+                const Icon = item.icon;
+                const isLocked = item.requiredPlan && PLANS.indexOf(workspacePlan) < PLANS.indexOf(item.requiredPlan);
+                return (
+                  <NavLink
+                    key={item.path}
+                    to={item.path}
+                    end={item.path === "/"}
+                    className={({ isActive }) => `sidebar-link ${isActive ? "active" : ""}`}
+                  >
+                    <Icon size={17} aria-hidden="true" />
+                    <span>{item.label}</span>
+                    {isLocked && item.requiredPlan && (
+                      <span className="sidebar-link-badge" title={`Disponível no ${PLAN_LABELS[item.requiredPlan]}`}>
+                        <Lock size={10} aria-hidden="true" /> {PLAN_LABELS[item.requiredPlan].replace("Kreato ", "")}
+                      </span>
+                    )}
+                  </NavLink>
+                );
+              })}
+              {group === "estudio" && isAdmin && (
+                <NavLink to="/admin" className={({ isActive }) => `sidebar-link ${isActive ? "active" : ""}`}>
+                  <ShieldCheck size={17} aria-hidden="true" />
+                  <span>Admin</span>
+                </NavLink>
+              )}
+            </div>
+          ))}
         </nav>
 
-        <div className="sidebar-footer">
-          {/* Plan Card */}
-          <div className={`sidebar-plan-card ${isPaid ? "paid" : ""}`}>
-            <div className="sidebar-plan-title">
-              <Crown size={15} />
-              <span>{isPaid ? PLAN_LABELS[plan] : "Plano Gratuito"}</span>
-            </div>
-            <p>{isPaid ? "Todos os recursos de organização liberados." : "Desbloqueie ideias e conteúdos ilimitados."}</p>
-            <NavLink to="/planos" className="sidebar-plan-btn">
-              {isPaid ? (
-                "Gerenciar plano"
-              ) : (
-                <>
-                  <Sparkles size={14} /> Fazer upgrade
-                </>
-              )}
-            </NavLink>
-          </div>
+        <UpNext token={token} refreshKey={`${selectedId ?? "pessoal"}:${location.pathname}`} />
 
-          {/* User */}
+        <div className="sidebar-footer">
+          <NavLink to="/planos" className={`sidebar-plan ${isPaid ? "is-paid" : ""}`}>
+            <Crown size={15} aria-hidden="true" className="sidebar-plan-icon" />
+            <span className="sidebar-plan-name">{isPaid ? PLAN_LABELS[plan] : "Plano gratuito"}</span>
+            <span className="sidebar-plan-action">{isPaid ? "Gerenciar" : "Fazer upgrade"}</span>
+          </NavLink>
+
           <div className="sidebar-user">
             <NavLink
               to="/perfil"
               className={({ isActive }) => `sidebar-user-link ${isActive ? "active" : ""}`}
               title="Ver meu perfil"
             >
-              <div className="avatar-circle">
+              <span className="avatar-circle">
                 {user?.fotoPerfil ? (
                   <img src={user.fotoPerfil} alt="" className="navbar-avatar-img" />
                 ) : (
-                  <UserIcon size={16} />
+                  userName.charAt(0).toUpperCase()
                 )}
-              </div>
+              </span>
               <span className="sidebar-user-name">{userName}</span>
-              {isPaid && <PremiumBadge plan={plan} size="sm" showIconOnly />}
             </NavLink>
             <button className="icon-button" onClick={logout} title="Sair da conta" aria-label="Sair da conta">
-              <LogOut size={18} />
+              <LogOut size={17} />
             </button>
           </div>
         </div>

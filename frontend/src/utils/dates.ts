@@ -87,3 +87,22 @@ export function formatLongDay(date: Date): string {
   const label = date.toLocaleDateString("pt-BR", { weekday: "long", day: "numeric", month: "long" });
   return label.charAt(0).toUpperCase() + label.slice(1);
 }
+
+const MONTH_SLATE = ["JAN", "FEV", "MAR", "ABR", "MAI", "JUN", "JUL", "AGO", "SET", "OUT", "NOV", "DEZ"];
+
+/** Data no estilo claquete: "QUA 12 NOV" */
+export function slateDate(date: Date): string {
+  const weekday = (WEEKDAY_LABELS[date.getDay()] ?? "").toUpperCase();
+  return `${weekday} ${String(date.getDate()).padStart(2, "0")} ${MONTH_SLATE[date.getMonth()]}`;
+}
+
+/** Dia curto no estilo claquete: "QUI 14" */
+export function slateDay(date: Date): string {
+  const weekday = (WEEKDAY_LABELS[date.getDay()] ?? "").toUpperCase();
+  return `${weekday} ${String(date.getDate()).padStart(2, "0")}`;
+}
+
+/** Hora no formato de timecode: "18:30" */
+export function slateTime(date: Date): string {
+  return `${String(date.getHours()).padStart(2, "0")}:${String(date.getMinutes()).padStart(2, "0")}`;
+}

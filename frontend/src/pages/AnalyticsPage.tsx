@@ -166,7 +166,6 @@ export const AnalyticsPage: React.FC = () => {
   return (
     <div className="page page-wide">
       <PageHeader
-        icon={ChartColumn}
         title="Métricas"
         description="Descubra quais conteúdos performam melhor e onde vale investir sua energia."
       />

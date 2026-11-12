@@ -167,7 +167,6 @@ export const IdeasPage: React.FC = () => {
   return (
     <div className="page">
       <PageHeader
-        icon={Lightbulb}
         title="Ideias"
         description="Capture ideias, ganchos e legendas antes que elas escapem."
         actions={

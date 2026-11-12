@@ -11,7 +11,6 @@ import {
   RefreshCw,
   Send,
   ShieldAlert,
-  ShieldCheck,
   Users,
   UsersRound,
   XCircle,
@@ -226,7 +225,6 @@ export const AdminPage: React.FC = () => {
   return (
     <div className="page page-wide admin-page">
       <PageHeader
-        icon={ShieldCheck}
         title="Admin"
         description="Saúde da plataforma: contas, assinaturas, produção e segurança de todos os workspaces."
       />

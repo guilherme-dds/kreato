@@ -1,5 +1,5 @@
 import React from "react";
-import { Construction, type LucideIcon } from "lucide-react";
+import type { LucideIcon } from "lucide-react";
 import { PageHeader } from "../components/PageHeader";
 
 interface ComingSoonPageProps {
@@ -9,13 +9,13 @@ interface ComingSoonPageProps {
   children?: React.ReactNode;
 }
 
-export const ComingSoonPage: React.FC<ComingSoonPageProps> = ({ icon, title, description, children }) => (
+export const ComingSoonPage: React.FC<ComingSoonPageProps> = ({ icon: Icon, title, description, children }) => (
   <div className="page">
-    <PageHeader icon={icon} title={title} description={description} />
+    <PageHeader title={title} description={description} />
 
     <div className="coming-soon-card">
       <div className="coming-soon-icon">
-        <Construction size={30} />
+        <Icon size={26} aria-hidden="true" />
       </div>
       <h3>Em construção</h3>
       <p>Este módulo está sendo preparado e chega nas próximas versões do Kreato.</p>

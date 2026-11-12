@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
-import { AlertTriangle, Crown, Info, RefreshCw, ShieldCheck } from "lucide-react";
+import { AlertTriangle, Info, RefreshCw, ShieldCheck } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
 import { useLayoutContext } from "../layouts/layoutContext";
 import { PageHeader } from "../components/PageHeader";
@@ -107,7 +107,6 @@ export const PlansPage: React.FC = () => {
   return (
     <div className="page page-wide">
       <PageHeader
-        icon={Crown}
         title="Planos"
         description="Veja quanto do seu plano você já usa e escolha o que faz sentido para o seu ritmo."
       />
