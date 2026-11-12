@@ -16,6 +16,10 @@ model Usuario {
   plano                String   @default("FREE") @db.VarChar(20)
   stripeCustomerId     String?  @db.VarChar(255)
   stripeSubscriptionId String?  @db.VarChar(255)
+  /// Cópia do status da assinatura no Stripe (active, past_due, canceled...), mantida pelos webhooks
+  statusAssinatura     String?  @db.VarChar(30)
+  /// Valor mensal da assinatura em centavos de BRL (base do MRR do painel admin)
+  valorMensalCentavos  Int?
   bio                  String?  @db.Text
   fotoPerfil           String?  @db.Text
   criadoEm             DateTime @default(now())
@@ -253,4 +257,11 @@ model ComentarioConteudo {
   @@index([workspaceId])
   @@index([autorId])
   @@index([resolvidoPorId])
+}
+
+/// Eventos do Stripe já processados: o mesmo evento reenviado não é aplicado de novo
+model StripeEvento {
+  id          String   @id @db.VarChar(255)
+  tipo        String   @db.VarChar(100)
+  processadoEm DateTime @default(now())
 }

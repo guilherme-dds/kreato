@@ -5,6 +5,7 @@ import {
   AlertTriangle,
   CheckCircle2,
   CircleDollarSign,
+  CreditCard,
   FileText,
   HardDrive,
   MessageSquare,
@@ -68,6 +69,15 @@ const ACTION_LABELS: Record<string, string> = {
   MEMBER_REMOVED: "Membros removidos",
   MEMBER_LEFT: "Saídas de equipe",
   WORKSPACE_UPDATED: "Workspaces editados",
+  PLAN_CHANGE_REQUESTED: "Trocas de plano pedidas",
+  BILLING_PORTAL_OPENED: "Portal da assinatura aberto",
+  STRIPE_CHECKOUT_COMPLETED: "Webhook: checkout concluído",
+  STRIPE_SUBSCRIPTION_UPDATED: "Webhook: assinatura atualizada",
+  STRIPE_SUBSCRIPTION_DELETED: "Webhook: assinatura encerrada",
+  STRIPE_PAYMENT_FAILED: "Webhook: cobrança recusada",
+  STRIPE_WEBHOOK_DUPLICATE: "Webhook repetido (ignorado)",
+  MOCK_UPGRADE_PLAN: "Planos ativados sem cartão",
+  MOCK_CANCEL_PLAN: "Planos desativados sem cartão",
 };
 
 const actionLabel = (acao: string) => ACTION_LABELS[acao] ?? acao;
@@ -270,15 +280,19 @@ export const AdminPage: React.FC = () => {
                   />
                   <StatTile
                     icon={<CheckCircle2 size={16} />}
-                    label="Assinantes"
-                    value={formatNumber(metrics.usuarios.pagantes)}
-                    hint={`${metrics.usuarios.porPlano.CREATOR} Creator · ${metrics.usuarios.porPlano.STUDIO} Studio`}
+                    label="Assinaturas ativas"
+                    value={formatNumber(metrics.usuarios.assinaturas.ativas)}
+                    hint={
+                      metrics.usuarios.assinaturas.inadimplentes > 0
+                        ? `${metrics.usuarios.assinaturas.inadimplentes} com cobrança recusada`
+                        : `${metrics.usuarios.porPlano.CREATOR} Creator · ${metrics.usuarios.porPlano.STUDIO} Studio`
+                    }
                   />
                   <StatTile
                     icon={<CircleDollarSign size={16} />}
-                    label="Receita mensal estimada"
-                    value={formatCurrencyCents(metrics.usuarios.mrrEstimadoCentavos)}
-                    hint="Pelo preço de tabela dos planos"
+                    label="MRR (modo de teste)"
+                    value={formatCurrencyCents(metrics.usuarios.assinaturas.mrrCentavos)}
+                    hint="Soma do valor mensal das assinaturas ativas no Stripe"
                   />
                   <StatTile
                     icon={<UsersRound size={16} />}
@@ -487,6 +501,42 @@ export const AdminPage: React.FC = () => {
                     )}
                   </section>
                 </div>
+
+                <section className="chart-card">
+                  <header className="chart-card-header">
+                    <h2>Últimos eventos</h2>
+                    <p>Os registros mais recentes do log de auditoria, incluindo os webhooks do Stripe</p>
+                  </header>
+                  {logStats.recentes.length === 0 ? (
+                    <ChartEmpty message="Nenhum evento registrado no período." />
+                  ) : (
+                    <ul className="admin-events">
+                      {logStats.recentes.map((event, index) => {
+                        const billing = event.acao.startsWith("STRIPE_") || event.entidade === "assinatura";
+                        return (
+                          <li key={`${event.timestamp}-${index}`} className="admin-event">
+                            <span className={`admin-event-icon ${billing ? "is-billing" : ""}`}>
+                              {billing ? <CreditCard size={14} /> : <Activity size={14} />}
+                            </span>
+                            <div className="admin-event-info">
+                              <span className="admin-event-title" title={event.acao}>
+                                {actionLabel(event.acao)}
+                                {event.entidade && <span className="admin-event-entity">{event.entidade}</span>}
+                              </span>
+                              <span className="admin-event-meta">
+                                {event.user_id ? `usuário ${event.user_id.slice(0, 8)}` : "sistema"}
+                                {event.entidade_id ? ` · ${event.entidade_id}` : ""}
+                              </span>
+                            </div>
+                            <time className="admin-event-time" dateTime={event.timestamp}>
+                              {dateTime(event.timestamp)}
+                            </time>
+                          </li>
+                        );
+                      })}
+                    </ul>
+                  )}
+                </section>
               </>
             )
           )}

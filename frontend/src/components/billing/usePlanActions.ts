@@ -4,6 +4,9 @@ import {
   cancelStripeSubscriptionApi,
   createStripeCheckoutSessionApi,
   getBillingPlansApi,
+  getUserProfileApi,
+  openBillingPortalApi,
+  pollUntil,
 } from "../../api/backend";
 import { useAuth } from "../../context/AuthContext";
 import type { BillingPlansResponse, PaidPlan, Plan } from "../../types";
@@ -12,7 +15,7 @@ import { PLAN_LABELS, getUserPlan } from "../../utils/plans";
 type ShowToast = (type: "success" | "error" | "info", text: string) => void;
 
 /** Ação em andamento: qual plano e qual botão (para mostrar o carregando no lugar certo) */
-export type PendingAction = { kind: "checkout" | "mock"; plan: Plan } | { kind: "cancel" } | null;
+export type PendingAction = { kind: "checkout" | "mock"; plan: Plan } | { kind: "cancel" | "portal" } | null;
 
 /**
  * Catálogo de planos + ações de assinatura (checkout, troca de plano, ativação de teste, cancelamento).
@@ -51,7 +54,21 @@ export function usePlanActions(showToast: ShowToast, onDone?: () => void) {
     setPending({ kind: "checkout", plan });
     try {
       const data = await createStripeCheckoutSessionApi(plan, token);
-      if (data.changed && data.user) {
+      if (data.pendente) {
+        // Troca pedida ao Stripe: o plano muda quando o webhook customer.subscription.updated chegar
+        showToast("info", data.message ?? "Troca enviada ao Stripe. Aguardando a confirmação...");
+        const result = await pollUntil(
+          () => getUserProfileApi(token),
+          (profile) => getUserPlan(profile) === plan
+        );
+        if (result.value) updateUser(result.value);
+        if (result.ok) {
+          showToast("success", `Plano alterado para ${PLAN_LABELS[plan]}.`);
+          onDone?.();
+        } else {
+          showToast("info", "O Stripe ainda não confirmou a troca. O plano será atualizado em instantes.");
+        }
+      } else if (data.changed && data.user) {
         updateUser(data.user);
         showToast("success", data.message ?? `Plano alterado para ${PLAN_LABELS[plan]}.`);
         onDone?.();
@@ -80,6 +97,19 @@ export function usePlanActions(showToast: ShowToast, onDone?: () => void) {
     }
   };
 
+  /** Portal do cliente do Stripe: trocar de plano, atualizar o cartão ou cancelar */
+  const manage = async () => {
+    setPending({ kind: "portal" });
+    try {
+      const { url } = await openBillingPortalApi(token);
+      window.location.href = url;
+      return; // mantém o botão em "carregando" até sair da página
+    } catch (err) {
+      showToast("error", err instanceof Error ? err.message : "Erro ao abrir o portal da assinatura.");
+    }
+    setPending(null);
+  };
+
   const cancel = async () => {
     const ok = window.confirm(
       `Cancelar o ${PLAN_LABELS[currentPlan]}? Você volta ao plano Gratuito e os limites passam a valer imediatamente.`
@@ -89,7 +119,17 @@ export function usePlanActions(showToast: ShowToast, onDone?: () => void) {
     setPending({ kind: "cancel" });
     try {
       const data = await cancelStripeSubscriptionApi(token);
-      updateUser(data.user);
+      if (data.pendente) {
+        showToast("info", data.message);
+        const result = await pollUntil(
+          () => getUserProfileApi(token),
+          (profile) => getUserPlan(profile) === "FREE"
+        );
+        if (result.value) updateUser(result.value);
+        if (!result.ok) return;
+      } else if (data.user) {
+        updateUser(data.user);
+      }
       showToast("info", "Assinatura cancelada. Você voltou ao plano Gratuito.");
       onDone?.();
     } catch (err) {
@@ -99,5 +139,5 @@ export function usePlanActions(showToast: ShowToast, onDone?: () => void) {
     }
   };
 
-  return { catalog, catalogError, loadCatalog, currentPlan, pending, subscribe, activateMock, cancel };
+  return { catalog, catalogError, loadCatalog, currentPlan, pending, subscribe, activateMock, cancel, manage };
 }

@@ -997,13 +997,20 @@ const paths: Record<string, Record<string, unknown>> = {
   "/api/stripe/verify-session": {
     post: authOp({
       tags: [T.billing],
-      summary: "Confirmar o retorno do Checkout",
-      description: "Valida a sessão paga no Stripe antes de liberar o plano. A ativação simulada só funciona fora de produção.",
+      summary: "Consultar o retorno do Checkout",
+      description:
+        "Só consulta: o plano não muda pelo redirect. `confirmado` fica true quando o webhook já gravou a assinatura; o frontend repete a chamada até lá. Sem Stripe configurado, ativa o plano simulado.",
       requestBody: jsonBody(obj({ sessionId: str(), plano: enumOf(["CREATOR", "STUDIO"]) })),
       responses: {
-        "200": json(obj({ user: ref("User"), success: { type: "boolean" } }), "Plano ativado"),
+        "200": json(
+          obj({
+            user: ref("User"),
+            confirmado: { type: "boolean" },
+            checkout: obj({ status: str(), pagamento: str() }),
+          }),
+          "Estado atual do plano"
+        ),
         "400": errors.badRequest,
-        "402": json(ref("Error"), "Pagamento ainda não confirmado pelo Stripe"),
         "403": errors.forbidden,
       },
     }),
@@ -1013,11 +1020,11 @@ const paths: Record<string, Record<string, unknown>> = {
       tags: [T.billing],
       summary: "Webhook do Stripe",
       description:
-        "Chamado pelo Stripe. Exige o header Stripe-Signature, validado sobre o corpo bruto com STRIPE_WEBHOOK_SECRET. Sincroniza o plano com a assinatura.",
+        "Chamado pelo Stripe. Exige o header Stripe-Signature, validado sobre o corpo bruto com STRIPE_WEBHOOK_SECRET. Trata checkout.session.completed, customer.subscription.updated, customer.subscription.deleted e invoice.payment_failed, buscando o estado atual da assinatura no Stripe. O id do evento é gravado junto com a mudança: um evento reenviado responde 200 com `duplicado: true` sem efeito.",
       parameters: [{ name: "Stripe-Signature", in: "header", required: true, schema: { type: "string" } }],
       requestBody: jsonBody({ type: "object", description: "Evento do Stripe" }),
       responses: {
-        "200": json(obj({ received: { type: "boolean" } }), "Evento processado"),
+        "200": json(obj({ received: { type: "boolean" }, duplicado: { type: "boolean" } }), "Evento processado (ou já processado)"),
         "400": errors.badRequest,
         "503": json(ref("Error"), "Webhook não configurado (sem STRIPE_WEBHOOK_SECRET)"),
       },
@@ -1026,16 +1033,30 @@ const paths: Record<string, Record<string, unknown>> = {
   "/api/stripe/mock-upgrade": {
     post: authOp({
       tags: [T.billing],
-      summary: "Ativar plano sem pagamento (somente fora de produção)",
+      summary: "Ativar plano sem pagamento (somente sem Stripe configurado)",
       requestBody: jsonBody(obj({ plano: enumOf(PLANS) })),
       responses: { "200": json(ref("UserMessage"), "Plano ativado"), "400": errors.badRequest, "403": errors.forbidden },
+    }),
+  },
+  "/api/stripe/portal": {
+    post: authOp({
+      tags: [T.billing],
+      summary: "Abrir o portal do cliente do Stripe",
+      description: "Trocar de plano, atualizar o cartão ou cancelar. As mudanças chegam pelos webhooks.",
+      responses: {
+        "200": json(obj({ url: str() }), "URL do portal"),
+        "409": json(ref("Error"), "Usuário sem assinatura no Stripe"),
+        "503": json(ref("Error"), "Stripe não configurado"),
+      },
     }),
   },
   "/api/stripe/cancel": {
     post: authOp({
       tags: [T.billing],
-      summary: "Cancelar assinatura e voltar ao Gratuito",
-      responses: { "200": json(ref("UserMessage"), "Assinatura cancelada"), "502": json(ref("Error"), "Falha ao cancelar no Stripe") },
+      summary: "Cancelar assinatura",
+      description:
+        "Com Stripe: cancela lá e responde `pendente: true`; o plano volta ao Gratuito quando o customer.subscription.deleted chegar. Sem Stripe: volta ao Gratuito na hora.",
+      responses: { "200": json(ref("UserMessage"), "Cancelamento feito ou enviado ao Stripe"), "502": json(ref("Error"), "Falha ao cancelar no Stripe") },
     }),
   },
 
@@ -1055,7 +1076,11 @@ const paths: Record<string, Record<string, unknown>> = {
               novos: int(),
               porPlano: obj({ FREE: int(), CREATOR: int(), STUDIO: int() }),
               pagantes: int(),
-              mrrEstimadoCentavos: int("Pelo preço de tabela"),
+              assinaturas: obj({
+                ativas: int(),
+                inadimplentes: int("Cobrança da renovação recusada (past_due/unpaid)"),
+                mrrCentavos: int("Soma do valor mensal das assinaturas ativas"),
+              }),
               novosPorDia: arrayOf(obj({ dia: str(undefined, "2026-11-06"), total: int() })),
             }),
             workspaces: obj({ total: int(), comEquipe: int(), convitesPendentes: int() }),

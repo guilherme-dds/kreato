@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
-import { AlertTriangle, Info, RefreshCw, ShieldCheck } from "lucide-react";
+import { AlertTriangle, Info, RefreshCw, Settings, ShieldCheck } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
 import { useLayoutContext } from "../layouts/layoutContext";
 import { PageHeader } from "../components/PageHeader";
@@ -69,7 +69,7 @@ const UsageMeter: React.FC<UsageMeterProps> = ({ label, used, limit, format = St
 };
 
 export const PlansPage: React.FC = () => {
-  const { token } = useAuth();
+  const { token, user } = useAuth();
   const { showToast } = useLayoutContext();
   const location = useLocation();
   const navigate = useNavigate();
@@ -97,7 +97,7 @@ export const PlansPage: React.FC = () => {
     navigate(location.pathname, { replace: true, state: null });
   }, [loadUsage, navigate, location.pathname]);
 
-  const { catalog, catalogError, loadCatalog, currentPlan, pending, subscribe, activateMock, cancel } = usePlanActions(
+  const { catalog, catalogError, loadCatalog, currentPlan, pending, subscribe, activateMock, cancel, manage } = usePlanActions(
     showToast,
     handlePlanChanged
   );
@@ -217,7 +217,14 @@ export const PlansPage: React.FC = () => {
       )}
 
       <footer className="plans-footer">
-        {currentPlan !== "FREE" && (
+        {/* Com Stripe, trocar de plano, cartão e cancelar ficam no portal do cliente (mudanças chegam por webhook) */}
+        {catalog?.stripeConfigurado && (currentPlan !== "FREE" || user?.statusAssinatura) && (
+          <button className="btn btn-secondary btn-sm plans-manage" onClick={manage} disabled={!!pending}>
+            <Settings size={15} />
+            {pending?.kind === "portal" ? "Abrindo o portal..." : "Gerenciar assinatura"}
+          </button>
+        )}
+        {catalog && !catalog.stripeConfigurado && currentPlan !== "FREE" && (
           <button className="plans-cancel" onClick={cancel} disabled={!!pending}>
             {pending?.kind === "cancel" ? "Cancelando..." : "Cancelar assinatura e voltar ao Gratuito"}
           </button>

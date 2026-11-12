@@ -38,6 +38,17 @@ export function periodStart(days: number, now = new Date()): Date {
 
 const isAnonymous = (userId: string) => !userId || userId === "anonymous";
 
+const RECENT_EVENTS = 15;
+
+const toRecent = (e: StatsEntry) => ({
+  acao: e.acao,
+  timestamp: e.timestamp,
+  user_id: isAnonymous(e.user_id) ? null : e.user_id,
+  ip: e.ip,
+  entidade: e.entidade ?? null,
+  entidade_id: e.entidade_id ?? null,
+});
+
 export function buildStats(entries: StatsEntry[], days: number, now = new Date()) {
   const start = periodStart(days, now);
 
@@ -98,18 +109,20 @@ export function buildStats(entries: StatsEntry[], days: number, now = new Date()
       .map(([acao, count]) => ({ acao, total: count }))
       .sort((a, b) => b.total - a.total || a.acao.localeCompare(b.acao))
       .slice(0, TOP_ACTIONS),
+    // Últimos eventos de qualquer tipo (inclui os webhooks do Stripe)
+    recentes: entries
+      .filter((e) => {
+        const time = new Date(e.timestamp);
+        return !Number.isNaN(time.getTime()) && time >= start && time <= now;
+      })
+      .sort((a, b) => b.timestamp.localeCompare(a.timestamp))
+      .slice(0, RECENT_EVENTS)
+      .map(toRecent),
     seguranca: {
       acessosNegados: denied,
       erros: errors,
       limitesAtingidos: limits,
-      recentes: security.slice(0, RECENT_SECURITY).map((e) => ({
-        acao: e.acao,
-        timestamp: e.timestamp,
-        user_id: isAnonymous(e.user_id) ? null : e.user_id,
-        ip: e.ip,
-        entidade: e.entidade ?? null,
-        entidade_id: e.entidade_id ?? null,
-      })),
+      recentes: security.slice(0, RECENT_SECURITY).map(toRecent),
     },
   };
 }

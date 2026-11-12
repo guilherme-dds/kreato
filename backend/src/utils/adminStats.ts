@@ -48,7 +48,3 @@ export function countByPlan(rows: { plano: string; count: number }[]): Record<Pl
   return result;
 }
 
-/** Receita mensal estimada pelo preço de tabela (o valor real pode variar com cupons e impostos) */
-export function estimateMrrCents(byPlan: Record<Plan, number>): number {
-  return PAID_PLANS.reduce((sum, plan) => sum + byPlan[plan] * PLAN_PRICING[plan].centavosPadrao, 0);
-}

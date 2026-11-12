@@ -5872,3 +5872,46 @@ button.attachment-info:hover .attachment-name {
   color: var(--ink-3);
   font-variant-numeric: tabular-nums;
 }
+
+/* Cobrança da assinatura recusada (status past_due/unpaid vindo do webhook) */
+.billing-alert {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 20px;
+  padding: 12px 16px;
+  border: 1px solid var(--danger-line);
+  border-radius: var(--radius-md);
+  background: var(--danger-wash);
+  color: var(--ink-2);
+  font-size: 14px;
+}
+
+.billing-alert > svg {
+  flex-shrink: 0;
+  color: var(--danger);
+}
+
+.billing-alert p {
+  flex: 1 1 240px;
+  margin: 0;
+}
+
+.billing-alert .btn {
+  flex: 0 0 auto;
+}
+
+/* Portal do cliente do Stripe (trocar de plano, cartão, cancelar) */
+.plans-manage {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 20px;
+}
+
+/* Últimos eventos: webhooks do Stripe em destaque */
+.admin-event-icon.is-billing {
+  color: var(--ink);
+}

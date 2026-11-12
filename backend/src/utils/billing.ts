@@ -29,12 +29,11 @@ export const PLAN_PRICING: Record<PaidPlan, PlanPricing> = {
   },
 };
 
-/** Status de assinatura que mantêm o plano pago ativo (past_due: Stripe ainda tentando cobrar) */
-export const ACTIVE_SUBSCRIPTION_STATUSES: ReadonlySet<Stripe.Subscription.Status> = new Set([
-  "active",
-  "trialing",
-  "past_due",
-]);
+/**
+ * Status de assinatura que liberam o plano pago. past_due (cobrança da renovação falhou) e unpaid
+ * ficam de fora: o plano pago não continua de graça enquanto o Stripe tenta cobrar de novo.
+ */
+export const ACTIVE_SUBSCRIPTION_STATUSES: ReadonlySet<Stripe.Subscription.Status> = new Set(["active", "trialing"]);
 
 export function parsePaidPlan(value: unknown): PaidPlan | null {
   const upper = typeof value === "string" ? value.trim().toUpperCase() : "";
@@ -48,7 +47,19 @@ function readEnv(name: string): string | null {
 
 export function getStripe(): Stripe | null {
   const secretKey = readEnv("STRIPE_SECRET_KEY");
-  return secretKey ? new Stripe(secretKey) : null;
+  if (!secretKey) return null;
+
+  // Testes locais com um Stripe simulado (ex.: stripe-mock). Ignorado com chave live.
+  const apiBase = readEnv("STRIPE_API_BASE");
+  if (apiBase && !/^(sk|rk)_live_/.test(secretKey)) {
+    const url = new URL(apiBase);
+    return new Stripe(secretKey, {
+      host: url.hostname,
+      port: url.port || (url.protocol === "https:" ? 443 : 80),
+      protocol: url.protocol === "https:" ? "https" : "http",
+    });
+  }
+  return new Stripe(secretKey);
 }
 
 /** Chave live: desativa atalhos de teste (ativação sem cartão) */
@@ -76,13 +87,51 @@ export function planFromPriceId(priceId: string | null | undefined): PaidPlan | 
   return PAID_PLANS.find((plan) => priceIdFor(plan) === priceId) ?? null;
 }
 
-/** Descobre o plano de uma assinatura: metadata gravada no checkout, depois o Price ID */
+/**
+ * Descobre o plano de uma assinatura: primeiro o Price ID do item (muda quando o cliente troca de
+ * plano pelo portal), depois a metadata gravada no checkout (preço criado sem Price ID).
+ */
 export function planFromSubscription(subscription: Stripe.Subscription): PaidPlan {
   return (
-    parsePaidPlan(subscription.metadata?.plano) ??
     subscription.items.data.map((item) => planFromPriceId(item.price.id)).find((plan) => plan !== null) ??
+    parsePaidPlan(subscription.metadata?.plano) ??
     "CREATOR"
   );
+}
+
+/** Valor mensal da assinatura em centavos (planos anuais/semanais convertidos para mês) */
+export function monthlyAmountCents(subscription: Stripe.Subscription): number {
+  let total = 0;
+  for (const item of subscription.items.data) {
+    const unit = item.price.unit_amount ?? 0;
+    const quantity = item.quantity ?? 1;
+    const recurring = item.price.recurring;
+    const every = recurring?.interval_count || 1;
+    const perMonth: Record<string, number> = { day: 365 / 12, week: 52 / 12, month: 1, year: 1 / 12 };
+    const factor = recurring ? (perMonth[recurring.interval] ?? 1) / every : 1;
+    total += unit * quantity * factor;
+  }
+  return Math.round(total);
+}
+
+/** O que o banco guarda de uma assinatura (cópia do estado verdadeiro, que é o do Stripe) */
+export interface SubscriptionSnapshot {
+  plano: Plan;
+  status: Stripe.Subscription.Status;
+  /** Assinatura ainda existe (pode voltar a liberar o plano); canceled/incomplete_expired = terminou */
+  vigente: boolean;
+  valorMensalCentavos: number | null;
+}
+
+export function subscriptionSnapshot(subscription: Stripe.Subscription): SubscriptionSnapshot {
+  const active = ACTIVE_SUBSCRIPTION_STATUSES.has(subscription.status);
+  const ended = subscription.status === "canceled" || subscription.status === "incomplete_expired";
+  return {
+    plano: active ? planFromSubscription(subscription) : "FREE",
+    status: subscription.status,
+    vigente: !ended,
+    valorMensalCentavos: ended ? null : monthlyAmountCents(subscription),
+  };
 }
 
 export function checkoutLineItem(plan: PaidPlan): Stripe.Checkout.SessionCreateParams.LineItem {

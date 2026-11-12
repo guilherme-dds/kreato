@@ -8,6 +8,8 @@ export interface User {
   plano?: Plan;
   stripeCustomerId?: string | null;
   stripeSubscriptionId?: string | null;
+  /** Status da assinatura no Stripe (active, past_due, canceled...), atualizado pelos webhooks */
+  statusAssinatura?: string | null;
   bio?: string;
   fotoPerfil?: string | null;
 }
@@ -148,7 +150,8 @@ export interface AdminMetrics {
     novos: number;
     porPlano: Record<Plan, number>;
     pagantes: number;
-    mrrEstimadoCentavos: number;
+    /** Assinaturas no Stripe (cópia mantida pelos webhooks); MRR = soma das ativas */
+    assinaturas: { ativas: number; inadimplentes: number; mrrCentavos: number };
     novosPorDia: DailyCount[];
   };
   workspaces: { total: number; comEquipe: number; convitesPendentes: number };
@@ -181,6 +184,8 @@ export interface LogStats {
   usuariosAtivos: number;
   porDia: { dia: string; eventos: number; usuariosAtivos: number; logins: number; negados: number }[];
   porAcao: { acao: string; total: number }[];
+  /** Últimos eventos de qualquer tipo (inclui os webhooks do Stripe) */
+  recentes: SecurityEvent[];
   seguranca: {
     acessosNegados: number;
     erros: number;
@@ -468,8 +473,11 @@ export interface CheckoutResponse {
   /** Stripe Checkout, portal do cliente ou retorno simulado */
   url?: string;
   mockActivated?: boolean;
-  /** Troca Creator <-> Studio feita direto na assinatura */
+  /** Troca Creator <-> Studio feita direto na assinatura (sem Stripe configurado) */
   changed?: boolean;
+  /** Troca enviada ao Stripe: o plano muda quando o webhook chegar */
+  pendente?: boolean;
+  plano?: Plan;
   user?: User;
   message?: string;
 }

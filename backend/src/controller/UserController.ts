@@ -1,7 +1,5 @@
 import type { Request, Response } from "express";
 import prisma from "../utils/prisma.js";
-import { isPaidPlan } from "../utils/plans.js";
-import { getStripe, isMockStripeId, planFromSubscription } from "../utils/billing.js";
 import {
   uploadAvatarToMinio,
   getAvatarFromMinio,
@@ -40,6 +38,7 @@ export class UserController {
           email: true,
           role: true,
           plano: true,
+          statusAssinatura: true,
           stripeCustomerId: true,
           stripeSubscriptionId: true,
           bio: true,
@@ -52,46 +51,7 @@ export class UserController {
         return res.status(404).json({ error: "Usuário não encontrado." });
       }
 
-      // Se o usuário estiver no plano gratuito no banco local, mas tiver um customerId no Stripe, sincroniza automaticamente
-      if (!isPaidPlan(user.plano) && user.stripeCustomerId && !isMockStripeId(user.stripeCustomerId)) {
-        const stripe = getStripe();
-        if (stripe) {
-          try {
-            const subs = await stripe.subscriptions.list({
-              customer: user.stripeCustomerId,
-              status: "active",
-              limit: 1,
-            });
-
-            const activeSub = subs.data?.[0];
-            if (activeSub) {
-              const updatedUser = await prisma.usuario.update({
-                where: { id: userId },
-                data: {
-                  plano: planFromSubscription(activeSub),
-                  stripeSubscriptionId: activeSub.id,
-                },
-                select: {
-                  id: true,
-                  nome: true,
-                  email: true,
-                  role: true,
-                  plano: true,
-                  stripeCustomerId: true,
-                  stripeSubscriptionId: true,
-                  bio: true,
-                  fotoPerfil: true,
-                  criadoEm: true,
-                },
-              });
-              return res.json({ user: updatedUser });
-            }
-          } catch (stripeErr: any) {
-            console.warn("[Stripe Auto-Sync] Erro ao sincronizar assinaturas ativas:", stripeErr.message);
-          }
-        }
-      }
-
+      // O plano vem só do banco: quem o atualiza são os webhooks do Stripe
       return res.json({ user });
     } catch (error: any) {
       console.error("Erro ao buscar perfil:", error);

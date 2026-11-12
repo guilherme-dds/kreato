@@ -109,9 +109,19 @@ export function publicUser(user: {
   nome: string;
   role: string;
   plano: string;
+  statusAssinatura?: string | null;
   bio: string | null;
   fotoPerfil: string | null;
 }) {
   const { id, email, nome, role, plano, bio, fotoPerfil } = user;
-  return { id, email, nome, role, plano, bio: bio || "", fotoPerfil: fotoPerfil || null };
+  return {
+    id,
+    email,
+    nome,
+    role,
+    plano,
+    statusAssinatura: user.statusAssinatura ?? null,
+    bio: bio || "",
+    fotoPerfil: fotoPerfil || null,
+  };
 }

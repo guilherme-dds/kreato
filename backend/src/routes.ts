@@ -236,5 +236,8 @@ router.post("/api/stripe/webhook", (req, res) => stripeController.webhook(req, r
 router.post("/stripe/mock-upgrade", AuthMiddleware, (req, res) => stripeController.mockUpgrade(req, res));
 router.post("/api/stripe/mock-upgrade", AuthMiddleware, (req, res) => stripeController.mockUpgrade(req, res));
 
+router.post("/stripe/portal", AuthMiddleware, (req, res) => stripeController.portal(req, res));
+router.post("/api/stripe/portal", AuthMiddleware, (req, res) => stripeController.portal(req, res));
+
 router.post("/stripe/cancel", AuthMiddleware, (req, res) => stripeController.cancelSubscription(req, res));
 router.post("/api/stripe/cancel", AuthMiddleware, (req, res) => stripeController.cancelSubscription(req, res));

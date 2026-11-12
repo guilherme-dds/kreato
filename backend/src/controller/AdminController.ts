@@ -1,11 +1,13 @@
 import type { Request, Response } from "express";
 import prisma from "../utils/prisma.js";
 import { CONTENT_STAGES, FINAL_STAGE } from "../utils/content.js";
-import { PAID_PLANS } from "../utils/billing.js";
+import { ACTIVE_SUBSCRIPTION_STATUSES, PAID_PLANS } from "../utils/billing.js";
+
+/** Assinaturas com a cobrança recusada (plano pago suspenso até o pagamento) */
+const DELINQUENT_STATUSES = ["past_due", "unpaid"];
 import {
   bucketByDay,
   countByPlan,
-  estimateMrrCents,
   parsePeriodDays,
   periodStart,
 } from "../utils/adminStats.js";
@@ -36,6 +38,8 @@ export class AdminController {
         comments,
         activeIdeas,
         storage,
+        activeSubscriptions,
+        delinquentSubscriptions,
       ] = await Promise.all([
         prisma.usuario.groupBy({ by: ["plano"], _count: { _all: true } }),
         prisma.usuario.findMany({ where: { criadoEm: inPeriod }, select: { criadoEm: true } }),
@@ -57,6 +61,13 @@ export class AdminController {
         prisma.comentarioConteudo.count({ where: { criadoEm: inPeriod } }),
         prisma.ideia.count({ where: { status: { not: "ARQUIVADA" } } }),
         prisma.anexo.aggregate({ _sum: { tamanhoBytes: true } }),
+        // MRR de teste: soma do valor mensal das assinaturas ativas (cópia mantida pelos webhooks)
+        prisma.usuario.aggregate({
+          where: { statusAssinatura: { in: [...ACTIVE_SUBSCRIPTION_STATUSES] } },
+          _count: { _all: true },
+          _sum: { valorMensalCentavos: true },
+        }),
+        prisma.usuario.count({ where: { statusAssinatura: { in: DELINQUENT_STATUSES } } }),
       ]);
 
       const byPlan = countByPlan(usersByPlan.map((row) => ({ plano: row.plano, count: row._count._all })));
@@ -70,7 +81,11 @@ export class AdminController {
           novos: newUsers.length,
           porPlano: byPlan,
           pagantes: PAID_PLANS.reduce((sum, plan) => sum + byPlan[plan], 0),
-          mrrEstimadoCentavos: estimateMrrCents(byPlan),
+          assinaturas: {
+            ativas: activeSubscriptions._count._all,
+            inadimplentes: delinquentSubscriptions,
+            mrrCentavos: activeSubscriptions._sum.valorMensalCentavos ?? 0,
+          },
           novosPorDia: bucketByDay(
             newUsers.map((user) => user.criadoEm),
             days,

@@ -50,8 +50,8 @@ O projeto é utilizado na disciplina de Introdução à Computação em Nuvem, c
 - **Métricas e Análise**: registro de visualizações, curtidas, comentários, compartilhamentos e salvamentos, taxa de engajamento e comparativos por plataforma e formato.
 - **Dashboard**: meta semanal de publicações, sequência de semanas cumpridas, agenda e destaques.
 - **Equipes e Workspaces**: convites por e-mail, papéis (Dono, Gestor, Roteirista, Editor) e troca entre workspaces.
-- **Planos e Assinatura (Stripe)**: Free, Creator e Studio, com Checkout, Customer Portal, webhooks e limites por plano.
-- **Painel Administrativo**: métricas da plataforma e eventos de segurança vindos do `log-service`.
+- **Planos e Assinatura (Stripe)**: Free, Creator e Studio com cobrança mensal recorrente, Checkout, portal do cliente, webhooks e limites por plano aplicados na API (detalhes em [Assinatura com Stripe](#-assinatura-com-stripe)).
+- **Painel Administrativo**: usuários por plano, assinaturas ativas, MRR de teste e os últimos eventos do `log-service` (inclusive os webhooks do Stripe).
 - **Autenticação & Sessão**: cadastro, login com JWT e Refresh Tokens no MySQL, logout e recuperação de senha por e-mail.
 - **Auditoria com Redis Streams**: eventos de uso e segurança enviados com `XADD` e consumidos pelo `log-service`.
 - **Documentação OpenAPI/Swagger**: Swagger UI para o backend (`/api/docs`), o `auth-service` e o `log-service`.
@@ -194,38 +194,54 @@ kreato/
 
 ---
 
+## 💳 Assinatura com Stripe
+
+O Kreato cobra por assinatura mensal, sempre no **modo de teste** do Stripe. Quem sabe o estado verdadeiro da assinatura é o Stripe; o banco guarda uma cópia (`plano`, `statusAssinatura`, `valorMensalCentavos`, `stripeCustomerId`, `stripeSubscriptionId`) mantida **só pelos webhooks**. O retorno do navegador depois do checkout não muda o plano: a tela apenas espera o webhook chegar.
+
+### Planos (modelo de receita)
+
+| Plano | Preço mensal | Ideias | Conteúdos em produção | Anexos | Histórico de métricas | Membros |
+|---|---|---|---|---|---|---|
+| **Gratuito** | R$ 0,00 | 50 | 15 | 100 MB | 30 dias | 1 |
+| **Kreato Creator** | R$ 29,90 | ilimitadas | ilimitados | 2 GB | completo | 1 |
+| **Kreato Studio** | R$ 79,90 | ilimitadas | ilimitados | 10 GB | completo | 5 |
+
+Os limites valem **na API** a cada requisição (o plano é lido do banco). Ao estourar, a API responde `403` com `code: "PLAN_LIMIT_REACHED"`, o limite atingido e como liberar (por exemplo: *"Você atingiu o limite de 15 conteúdos em produção do seu plano. Publique ou exclua conteúdos, ou faça upgrade."*).
+
+### Webhooks tratados (`POST /api/stripe/webhook`)
+
+| Evento | O que muda no banco |
+|---|---|
+| `checkout.session.completed` | Guarda o customer e a subscription no usuário e libera o plano pago |
+| `customer.subscription.updated` | Atualiza plano, status (`active`, `past_due`, `canceled`…) e valor mensal; troca de plano pelo portal muda o plano pelo Price ID |
+| `customer.subscription.deleted` | Volta o usuário ao Gratuito |
+| `invoice.payment_failed` | Marca a assinatura como inadimplente, suspende o plano pago e avisa o usuário (e-mail e aviso no app) |
+
+- A assinatura de todo evento é validada com `STRIPE_WEBHOOK_SECRET` sobre o corpo bruto.
+- O estado da assinatura é sempre buscado no Stripe, então a ordem de chegada dos eventos não importa.
+- O `id` de cada evento é gravado (tabela `StripeEvento`) na mesma transação da mudança: um evento reenviado responde `200` sem efeito.
+- Cada webhook vira um evento de auditoria (`STRIPE_*`) e aparece em **Últimos eventos** no painel admin.
+
+### Configuração no painel do Stripe (modo de teste)
+
+1. **Produtos**: crie *Kreato Creator* e *Kreato Studio*, cada um com preço **recorrente mensal em BRL** (valores da tabela). O Gratuito pode ser um produto de R$ 0,00 (opcional). Copie os Price IDs para `STRIPE_PRICE_CREATOR` e `STRIPE_PRICE_STUDIO`.
+2. **Portal do cliente** (*Settings → Billing → Customer portal*): permita trocar entre Creator e Studio, atualizar a forma de pagamento e cancelar. Para testar na hora, configure o cancelamento **imediato**.
+3. **Webhook** (*Developers → Webhooks*): endpoint `https://<seu-domínio>/api/stripe/webhook` com os quatro eventos acima; o *signing secret* vai em `STRIPE_WEBHOOK_SECRET`.
+4. **Variáveis**: `STRIPE_SECRET_KEY`, `STRIPE_PUBLISHABLE_KEY`, `STRIPE_WEBHOOK_SECRET`, `STRIPE_PRICE_CREATOR` e `STRIPE_PRICE_STUDIO` ficam **só nas variáveis da stack no Portainer**. Nenhuma chave vai para o repositório.
+
+Para testar localmente, a Stripe CLI encaminha os eventos: `stripe listen --forward-to localhost:8209/api/stripe/webhook`. Cartão de teste: `4242 4242 4242 4242`, qualquer data futura e qualquer CVC. Sem `STRIPE_SECRET_KEY`, o app entra em modo simulado (planos ativados sem cartão), que fica desligado sempre que o Stripe está configurado.
+
+---
+
 ## ⚙️ Configuração de Variáveis de Ambiente
 
-Crie o arquivo `.env` no diretório raiz conforme o modelo abaixo:
+O modelo com **todos os nomes** está em [`.env.example`](.env.example), sem nenhum valor real. Copie para `.env` no desenvolvimento; em produção, cadastre as mesmas variáveis na stack do Portainer.
 
-```env
-# Banco de Dados MySQL
-DATABASE_URL="mysql://usuario:senha@host:3306/nome_banco"
-DATABASE_HOST="host"
-DATABASE_USER="usuario"
-DATABASE_PASSWORD="senha"
-DATABASE_NAME="nome_banco"
-DATABASE_PORT="3306"
-
-# Segredo de Autenticação
-JWT_SECRET="seu_jwt_secret_super_seguro"
-
-# Frontend
-VITE_API_BASE_URL=/api
-
-# Configurações MinIO (Object Storage S3)
-MINIO_ENDPOINT=minio
-MINIO_PORT=9000
-MINIO_USE_SSL=false
-MINIO_ROOT_USER=minioadmin
-MINIO_ROOT_PASSWORD=minioadmin123
-MINIO_BUCKET_NAME=avatars
-
-# Redis Streams & Serviços
-REDIS_URL=redis://redis:6379
-AUTH_SERVICE_URL=http://auth-service:3334
-FRONTEND_URL=http://localhost:8209
+```bash
+cp .env.example .env
 ```
+
+Obrigatórias para subir a stack: as do banco, `JWT_SECRET`, `MINIO_ROOT_USER` e `MINIO_ROOT_PASSWORD`. Para e-mails e assinatura: `FRONTEND_URL`, `BREVO_API_KEY` e `BREVO_SENDER_EMAIL` (ou Mailtrap) e as `STRIPE_*`.
 
 ---
 
@@ -268,7 +284,7 @@ A referência completa, com corpos e respostas, está no Swagger de cada serviç
 - **Revisão**: `GET/POST /api/conteudos/:id/comentarios`, `PATCH/DELETE /api/comentarios/:id`, `POST /api/conteudos/:id/aprovar-roteiro`, `POST /api/conteudos/:id/solicitar-ajustes`.
 - **Anexos**: `GET/POST /api/conteudos/:id/anexos`, `GET /api/anexos/:id/arquivo`, `DELETE /api/anexos/:id`.
 - **Métricas e dashboard**: `GET /api/metricas/resumo`, `GET/POST /api/conteudos/:id/metricas`, `DELETE /api/metricas/:id`, `GET /api/dashboard`.
-- **Planos (Stripe)**: `GET /api/stripe/plans`, `POST /api/stripe/create-checkout-session`, `POST /api/stripe/verify-session`, `POST /api/stripe/cancel`, `POST /api/stripe/webhook`.
+- **Planos (Stripe)**: `GET /api/stripe/plans`, `POST /api/stripe/create-checkout-session`, `POST /api/stripe/verify-session` (só consulta), `POST /api/stripe/portal`, `POST /api/stripe/cancel`, `POST /api/stripe/webhook`.
 - **Admin**: `GET /api/admin/metricas` (role `admin`).
 
 ### Auditoria (`log-service`) · Swagger em `/log/apidocs`

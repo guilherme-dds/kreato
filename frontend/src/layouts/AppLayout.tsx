@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import { NavLink, Outlet, useLocation, useNavigate } from "react-router-dom";
-import { Crown, Lock, LogOut, Menu, ShieldCheck, X } from "lucide-react";
+import { AlertTriangle, Crown, Lock, LogOut, Menu, ShieldCheck, X } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
 import {
   WORKSPACE_LOST_EVENT,
@@ -9,6 +9,8 @@ import {
   getWorkspacesApi,
   setSelectedWorkspaceId,
   verifyStripeSessionApi,
+  openBillingPortalApi,
+  pollUntil,
 } from "../api/backend";
 import { KreatoLogo } from "../components/KreatoLogo";
 import { UpNext } from "../components/UpNext";
@@ -36,6 +38,9 @@ export const AppLayout: React.FC<AppLayoutProps> = ({ showToast }) => {
 
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const handledStripeSearch = useRef<string | null>(null);
+  // Plano de antes de abrir o portal: a volta espera o webhook mudar o plano
+  const planRef = useRef(getUserPlan(user));
+  planRef.current = getUserPlan(user);
 
   const [workspaces, setWorkspaces] = useState<WorkspaceSummary[]>([]);
   // null = workspace pessoal (requisições sem o header X-Workspace-Id)
@@ -124,23 +129,41 @@ export const AppLayout: React.FC<AppLayoutProps> = ({ showToast }) => {
 
     if (stripeStatus === "success" || stripeStatus === "success_mock") {
       if (token) {
-        verifyStripeSessionApi(token, query.get("session_id"), query.get("plano"))
-          .then((data) => {
-            if (data.user) {
-              updateUser(data.user);
-              showToast(
-                "success",
-                `🎉 Parabéns! Sua assinatura do plano ${PLAN_LABELS[getUserPlan(data.user)]} foi ativada com sucesso!`
-              );
-            }
-          })
-          .catch((err) => {
-            console.error("Erro ao verificar sessão do Stripe:", err);
-            showToast("error", err instanceof Error ? err.message : "Não foi possível confirmar o pagamento.");
+        // O redirect não ativa nada: espera o webhook do Stripe gravar a assinatura no banco
+        const sessionId = query.get("session_id");
+        const plano = query.get("plano");
+        if (stripeStatus === "success") showToast("info", "Pagamento recebido. Aguardando a confirmação do Stripe...");
+        pollUntil(
+          () => verifyStripeSessionApi(token, sessionId, plano),
+          (data) => data.confirmado,
+          { timeoutMs: 45_000 }
+        ).then(({ value, ok }) => {
+          if (value?.user) updateUser(value.user);
+          if (ok && value) {
+            showToast(
+              "success",
+              `🎉 Parabéns! Sua assinatura do plano ${PLAN_LABELS[getUserPlan(value.user)]} foi ativada com sucesso!`
+            );
+          } else {
+            showToast("info", "O Stripe ainda não confirmou a assinatura. O plano será atualizado em instantes.");
             refreshProfile();
-          });
+          }
+        });
       } else {
         showToast("success", "🎉 Parabéns! Sua assinatura foi ativada!");
+      }
+    } else if (stripeStatus === "portal") {
+      // Voltou do portal: mudanças (troca, cancelamento) chegam por webhook logo em seguida
+      if (token) {
+        const before = planRef.current;
+        pollUntil(
+          () => getUserProfileApi(token),
+          (profile) => getUserPlan(profile) !== before,
+          { timeoutMs: 12_000 }
+        ).then(({ value, ok }) => {
+          if (value) updateUser(value);
+          if (ok && value) showToast("success", `Seu plano agora é ${PLAN_LABELS[getUserPlan(value)]}.`);
+        });
       }
     } else if (stripeStatus === "cancel") {
       showToast("info", "Fluxo de pagamento com o Stripe cancelado. Você continua no Plano Gratuito.");
@@ -151,6 +174,15 @@ export const AppLayout: React.FC<AppLayoutProps> = ({ showToast }) => {
 
     navigate(location.pathname, { replace: true });
   }, [location.search, location.pathname, navigate, token, updateUser, showToast]);
+
+  const paymentFailed = user?.statusAssinatura === "past_due" || user?.statusAssinatura === "unpaid";
+  const openPortal = () => {
+    openBillingPortalApi(token)
+      .then(({ url }) => {
+        window.location.href = url;
+      })
+      .catch((err) => showToast("error", err instanceof Error ? err.message : "Erro ao abrir o portal."));
+  };
 
   return (
     <div className={`app-shell ${isSidebarOpen ? "sidebar-open" : ""}`}>
@@ -253,6 +285,18 @@ export const AppLayout: React.FC<AppLayoutProps> = ({ showToast }) => {
       {/* Page Content */}
       <main className="app-main">
         <div className="app-main-inner">
+          {paymentFailed && (
+            <div className="billing-alert" role="alert">
+              <AlertTriangle size={18} />
+              <p>
+                <strong>A cobrança da sua assinatura foi recusada.</strong> Os recursos do plano pago ficam suspensos
+                até o pagamento ser regularizado.
+              </p>
+              <button className="btn btn-primary btn-sm" onClick={openPortal}>
+                Atualizar pagamento
+              </button>
+            </div>
+          )}
           {/* A key remonta as páginas ao trocar de workspace, para recarregarem os dados certos */}
           <Outlet
             key={selectedId ?? "pessoal"}

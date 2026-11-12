@@ -464,12 +464,16 @@ export async function activateMockPlanApi(plano: Plan, token?: string | null): P
   );
 }
 
+/**
+ * Consulta o checkout concluído. Não ativa nada: `confirmado` fica true quando o webhook do Stripe
+ * já gravou a assinatura (o plano só muda por ele).
+ */
 export async function verifyStripeSessionApi(
   token?: string | null,
   sessionId?: string | null,
   plano?: string | null
-): Promise<{ user: User; success: boolean }> {
-  return fetchWithAuth<{ user: User; success: boolean }>(
+): Promise<{ user: User; confirmado: boolean }> {
+  return fetchWithAuth<{ user: User; confirmado: boolean }>(
     "/stripe/verify-session",
     {
       method: "POST",
@@ -480,8 +484,36 @@ export async function verifyStripeSessionApi(
   );
 }
 
-export async function cancelStripeSubscriptionApi(token?: string | null): Promise<{ user: User; message: string }> {
-  return fetchWithAuth<{ user: User; message: string }>(
+/** Portal do cliente do Stripe: trocar de plano, cartão e cancelar (as mudanças chegam por webhook) */
+export async function openBillingPortalApi(token?: string | null): Promise<{ url: string }> {
+  return fetchWithAuth<{ url: string }>("/stripe/portal", { method: "POST" }, token, "Erro ao abrir o portal da assinatura");
+}
+
+/** Repete `check` até dar true ou o tempo acabar (espera o webhook do Stripe chegar) */
+export async function pollUntil<T>(
+  load: () => Promise<T>,
+  check: (value: T) => boolean,
+  { timeoutMs = 30_000, intervalMs = 2_000 } = {}
+): Promise<{ value: T | null; ok: boolean }> {
+  const deadline = Date.now() + timeoutMs;
+  let last: T | null = null;
+  while (Date.now() < deadline) {
+    try {
+      last = await load();
+      if (check(last)) return { value: last, ok: true };
+    } catch {
+      // falha passageira: tenta de novo até o prazo
+    }
+    await new Promise((resolve) => setTimeout(resolve, intervalMs));
+  }
+  return { value: last, ok: false };
+}
+
+/** Com Stripe, o cancelamento é pedido ao Stripe (`pendente`) e o plano muda quando o webhook chegar */
+export async function cancelStripeSubscriptionApi(
+  token?: string | null
+): Promise<{ user?: User; pendente?: boolean; message: string }> {
+  return fetchWithAuth<{ user?: User; pendente?: boolean; message: string }>(
     "/stripe/cancel",
     { method: "POST" },
     token,
