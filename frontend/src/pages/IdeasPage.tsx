@@ -27,7 +27,7 @@ import {
   updateIdeaApi,
 } from "../api/backend";
 import type { Idea, IdeaStatus, IdeasResponse, Platform } from "../types";
-import { IDEA_STATUS_LABELS, PLATFORMS, PLATFORM_LABELS, formatRelativeDate } from "../utils/content";
+import { IDEA_STATUS_LABELS, PLATFORMS, PLATFORM_LABELS, formatRelativeDate, sceneNumber } from "../utils/content";
 
 type StatusTab = "" | IdeaStatus;
 
@@ -288,21 +288,20 @@ export const IdeasPage: React.FC = () => {
             const statusClass = `status-${idea.status.toLowerCase()}`;
             return (
               <article key={idea.id} className={`idea-card ${statusClass}`}>
-                <div className="idea-card-badges">
-                  {idea.plataforma && (
-                    <span className={`idea-badge platform-${idea.plataforma.toLowerCase()}`}>
-                      {PLATFORM_LABELS[idea.plataforma]}
-                    </span>
-                  )}
+                <header className="idea-card-head">
+                  <span className="idea-card-number timecode">IDEIA {sceneNumber(idea.id)}</span>
+                  {idea.plataforma && <span className="idea-card-platform">{PLATFORM_LABELS[idea.plataforma]}</span>}
                   <span className={`idea-badge ${statusClass}`}>{IDEA_STATUS_LABELS[idea.status]}</span>
-                </div>
+                </header>
 
                 <button className="idea-card-title" onClick={() => openEdit(idea)}>
                   {idea.titulo}
                 </button>
 
-                {(idea.gancho || idea.descricao) && (
-                  <p className="idea-card-excerpt">{idea.gancho || idea.descricao}</p>
+                {idea.gancho ? (
+                  <blockquote className="idea-card-hook">{idea.gancho}</blockquote>
+                ) : (
+                  idea.descricao && <p className="idea-card-excerpt">{idea.descricao}</p>
                 )}
 
                 {idea.tags.length > 0 && (

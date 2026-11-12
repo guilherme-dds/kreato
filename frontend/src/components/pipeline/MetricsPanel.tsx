@@ -251,7 +251,7 @@ export const MetricsPanel: React.FC<MetricsPanelProps> = ({ contentId, stage }) 
                       tickLine={false}
                       axisLine={false}
                       tickFormatter={(value: number) => formatCompact(value)}
-                      width={48}
+                      width={64}
                       allowDecimals={false}
                     />
                     <Tooltip

@@ -291,7 +291,7 @@ export const AnalyticsPage: React.FC = () => {
                     tickLine={false}
                     axisLine={false}
                     tickFormatter={(value: number) => formatCompact(value)}
-                    width={52}
+                    width={64}
                     allowDecimals={false}
                   />
                   <Tooltip
@@ -469,7 +469,7 @@ export const AnalyticsPage: React.FC = () => {
                   <tbody>
                     {ranked.slice(0, RANKING_SIZE).map((content, index) => (
                       <tr key={content.id}>
-                        <td className="ranking-position">{index + 1}</td>
+                        <td className="ranking-position">{String(index + 1).padStart(2, "0")}</td>
                         <td>
                           <div className="ranking-content">
                             <Link to={`/pipeline/${content.id}`}>{content.titulo}</Link>

@@ -1,9 +1,7 @@
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import {
-  AlertTriangle,
   ArrowRight,
-  CalendarClock,
   ChartColumn,
   Check,
   Flame,
@@ -14,7 +12,6 @@ import {
   Plus,
   RefreshCw,
   Sparkles,
-  Target,
   X,
 } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
@@ -22,7 +19,8 @@ import { useLayoutContext } from "../layouts/layoutContext";
 import { PageHeader } from "../components/PageHeader";
 import { getDashboardApi, updateWeeklyGoalApi } from "../api/backend";
 import type { DashboardAgendaItem, DashboardData, WeeklyGoal } from "../types";
-import { CONTENT_STAGE_LABELS, CONTENT_STAGES, PLATFORM_LABELS, formatDateTime, formatRelativeDate } from "../utils/content";
+import { CONTENT_STAGE_LABELS, CONTENT_STAGES, PLATFORM_LABELS, formatRelativeDate } from "../utils/content";
+import { slateDay, slateTime } from "../utils/dates";
 import { formatCompact, formatPercent } from "../utils/format";
 
 const MIN_GOAL = 1;
@@ -55,9 +53,12 @@ const WeeklyGoalCard: React.FC<WeeklyGoalCardProps> = ({ goal, onSave }) => {
   const [draft, setDraft] = useState(goal.meta);
   const [isSaving, setIsSaving] = useState(false);
 
-  const progress = Math.min(goal.publicadosSemana / goal.meta, 1);
   const remaining = Math.max(goal.meta - goal.publicadosSemana, 0);
+  const bonus = Math.max(goal.publicadosSemana - goal.meta, 0);
   const lastIndex = goal.semanas.length - 1;
+  // fimSemana é exclusivo (segunda seguinte, 00:00): o último dia é o anterior
+  const weekStart = new Date(goal.inicioSemana);
+  const weekEnd = new Date(new Date(goal.fimSemana).getTime() - 1);
 
   const startEditing = () => {
     setDraft(goal.meta);
@@ -81,9 +82,12 @@ const WeeklyGoalCard: React.FC<WeeklyGoalCardProps> = ({ goal, onSave }) => {
   return (
     <section className="home-card home-goal">
       <header className="home-card-header">
-        <h2>
-          <Target size={16} /> Meta da semana
-        </h2>
+        <div className="home-card-heading">
+          <h2>Meta da semana</h2>
+          <p className="home-card-slate timecode">
+            {slateDay(weekStart)} – {slateDay(weekEnd)}
+          </p>
+        </div>
         {goal.podeEditar && !isEditing && (
           <button className="idea-action" onClick={startEditing} title="Alterar meta" aria-label="Alterar meta semanal">
             <Pencil size={14} />
@@ -127,7 +131,7 @@ const WeeklyGoalCard: React.FC<WeeklyGoalCardProps> = ({ goal, onSave }) => {
           <div className="goal-headline">
             <strong>
               {goal.publicadosSemana}
-              <span> / {goal.meta}</span>
+              <span>/{goal.meta}</span>
             </strong>
             <p>
               {goal.semanaAtualConcluida
@@ -136,14 +140,31 @@ const WeeklyGoalCard: React.FC<WeeklyGoalCardProps> = ({ goal, onSave }) => {
             </p>
           </div>
           <div
-            className="goal-progress"
+            className={`goal-reel ${goal.semanaAtualConcluida ? "is-done" : ""}`}
             role="progressbar"
             aria-label="Progresso da meta semanal"
             aria-valuemin={0}
             aria-valuemax={goal.meta}
             aria-valuenow={Math.min(goal.publicadosSemana, goal.meta)}
           >
-            <div className={goal.semanaAtualConcluida ? "is-done" : ""} style={{ width: `${progress * 100}%` }} />
+            {Array.from({ length: goal.meta }, (_, index) => {
+              const filled = index < goal.publicadosSemana;
+              const isNext = index === goal.publicadosSemana;
+              return (
+                <span
+                  key={index}
+                  className={`goal-frame ${filled ? "is-filled" : ""} ${isNext ? "is-next" : ""}`}
+                  aria-hidden="true"
+                >
+                  {String(index + 1).padStart(2, "0")}
+                </span>
+              );
+            })}
+            {bonus > 0 && (
+              <span className="goal-frame-bonus" aria-hidden="true">
+                +{bonus}
+              </span>
+            )}
           </div>
         </>
       )}
@@ -181,24 +202,24 @@ const WeeklyGoalCard: React.FC<WeeklyGoalCardProps> = ({ goal, onSave }) => {
 /* --------------------------------------------------------------------------
    Agenda: atrasados + próximos dias
    -------------------------------------------------------------------------- */
-const AgendaItem: React.FC<{ item: DashboardAgendaItem; overdue?: boolean }> = ({ item, overdue }) => (
-  <li>
-    <Link to={`/pipeline/${item.id}`} className={`home-agenda-item stage-${item.etapa.toLowerCase()}`}>
-      <span className="home-agenda-date">{formatDateTime(item.dataPublicacao)}</span>
-      <span className="home-agenda-title">{item.titulo}</span>
-      <span className="home-agenda-meta">
-        {overdue ? (
-          <span className="home-overdue">
-            <AlertTriangle size={12} /> Atrasado
-          </span>
-        ) : (
-          <span className="home-stage-dot">{CONTENT_STAGE_LABELS[item.etapa]}</span>
-        )}
-        {item.plataforma && <span>{PLATFORM_LABELS[item.plataforma]}</span>}
-      </span>
-    </Link>
-  </li>
-);
+const AgendaItem: React.FC<{ item: DashboardAgendaItem; overdue?: boolean }> = ({ item, overdue }) => {
+  const date = new Date(item.dataPublicacao);
+  return (
+    <li>
+      <Link to={`/pipeline/${item.id}`} className={`home-agenda-item ${overdue ? "is-overdue" : ""}`}>
+        <time className="home-agenda-date" dateTime={item.dataPublicacao}>
+          <span>{slateDay(date)}</span>
+          <span>{slateTime(date)}</span>
+        </time>
+        <span className="home-agenda-title">{item.titulo}</span>
+        <span className="home-agenda-meta">
+          {overdue ? <span className="home-overdue">Atrasado</span> : <span>{CONTENT_STAGE_LABELS[item.etapa]}</span>}
+          {item.plataforma && <span>{PLATFORM_LABELS[item.plataforma]}</span>}
+        </span>
+      </Link>
+    </li>
+  );
+};
 
 /* --------------------------------------------------------------------------
    Página
@@ -333,9 +354,7 @@ export const DashboardPage: React.FC = () => {
 
         <section className="home-card">
           <header className="home-card-header">
-            <h2>
-              <ChartColumn size={16} /> Últimos {desempenho.dias} dias
-            </h2>
+            <h2>Últimos {desempenho.dias} dias</h2>
             <Link to="/metricas" className="home-card-link">
               Métricas <ArrowRight size={14} />
             </Link>
@@ -378,9 +397,7 @@ export const DashboardPage: React.FC = () => {
 
         <section className="home-card">
           <header className="home-card-header">
-            <h2>
-              <CalendarClock size={16} /> Agenda
-            </h2>
+            <h2>Agenda</h2>
             <Link to="/calendario" className="home-card-link">
               Calendário <ArrowRight size={14} />
             </Link>
@@ -394,7 +411,7 @@ export const DashboardPage: React.FC = () => {
             <>
               {agenda.atrasados.length > 0 && (
                 <div className="home-agenda-group">
-                  <h3 className="home-overdue">
+                  <h3 className="home-agenda-heading is-overdue">
                     {plural(agenda.totalAtrasados, "conteúdo atrasado", "conteúdos atrasados")}
                   </h3>
                   <ul className="home-agenda">
@@ -405,7 +422,7 @@ export const DashboardPage: React.FC = () => {
                 </div>
               )}
               <div className="home-agenda-group">
-                <h3>Próximos {agenda.dias} dias</h3>
+                <h3 className="home-agenda-heading">Próximos {agenda.dias} dias</h3>
                 {agenda.proximos.length === 0 ? (
                   <p className="home-card-empty">Nenhuma publicação planejada.</p>
                 ) : (
@@ -422,27 +439,27 @@ export const DashboardPage: React.FC = () => {
 
         <section className="home-card">
           <header className="home-card-header">
-            <h2>
-              <KanbanSquare size={16} /> Em produção
-            </h2>
+            <h2>Em produção</h2>
             <Link to="/pipeline" className="home-card-link">
               Pipeline <ArrowRight size={14} />
             </Link>
           </header>
-          <ul className="home-stages">
-            {ACTIVE_STAGES.map((stage) => (
-              <li key={stage} className={`stage-${stage.toLowerCase()}`}>
-                <span className="home-stage-dot">{CONTENT_STAGE_LABELS[stage]}</span>
-                <strong>{pipeline.porEtapa[stage] ?? 0}</strong>
-              </li>
-            ))}
-          </ul>
+          <ol className="home-stages">
+            {ACTIVE_STAGES.map((stage, index) => {
+              const count = pipeline.porEtapa[stage] ?? 0;
+              return (
+                <li key={stage} className={`stage-${stage.toLowerCase()} ${count > 0 ? "has-items" : ""}`}>
+                  <span className="home-stages-number timecode">{String(index + 1).padStart(2, "0")}</span>
+                  <strong>{count}</strong>
+                  <span className="home-stages-label">{CONTENT_STAGE_LABELS[stage]}</span>
+                </li>
+              );
+            })}
+          </ol>
 
           <div className="home-ideas">
             <div className="home-ideas-header">
-              <h3>
-                <Lightbulb size={14} /> {plural(ideias.novas, "ideia nova", "ideias novas")}
-              </h3>
+              <h3>{plural(ideias.novas, "ideia nova", "ideias novas")}</h3>
               <Link to="/ideias" className="home-card-link">
                 Ver ideias <ArrowRight size={14} />
               </Link>

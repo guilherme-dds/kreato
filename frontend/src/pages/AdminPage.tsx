@@ -105,7 +105,7 @@ const DailyColumns: React.FC<{ data: { dia: string; value: number }[]; seriesLab
           tickLine={false}
           axisLine={false}
           tickFormatter={(value: number) => formatCompact(value)}
-          width={40}
+          width={52}
           allowDecimals={false}
         />
         <Tooltip
