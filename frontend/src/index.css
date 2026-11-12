@@ -724,12 +724,6 @@ time, .timecode {
 }
 
 /* Section Headers */
-.results-count {
-  font-size: 0.9rem;
-  color: var(--ink-3);
-  font-weight: 500;
-}
-
 /* Modals General */
 .modal-backdrop {
   position: fixed;
@@ -1050,13 +1044,6 @@ time, .timecode {
 .btn-secondary:hover {
   background: var(--well);
   color: var(--ink);
-}
-
-.icon-btn {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 0.5rem;
 }
 
 /* Spinner */

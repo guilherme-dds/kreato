@@ -68,12 +68,36 @@ export async function AuthMiddleware(
   }
 }
 
+/** Papel atual no banco via auth-service; null = sem papel/token inválido, undefined = serviço fora */
+async function currentRole(authorization: string | undefined): Promise<string | null | undefined> {
+  const authServiceUrl = process.env.AUTH_SERVICE_URL || "http://auth-service:3334";
+  try {
+    const response = await fetch(`${authServiceUrl}/auth/verify`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: authorization || "" },
+      body: "{}",
+      signal: AbortSignal.timeout(3000),
+    });
+    if (response.status === 401) return null;
+    if (!response.ok) return undefined;
+    const data = (await response.json()) as { valid?: boolean; role?: string };
+    return data.valid && typeof data.role === "string" ? data.role : null;
+  } catch {
+    return undefined;
+  }
+}
+
 export async function AdminMiddleware(
   req: Request,
   res: Response,
   next: NextFunction
 ) {
-  if (req.userRole?.toLowerCase() !== "admin") {
+  // Sem banco neste serviço: o auth-service confirma o papel atual (lido do banco)
+  const role = await currentRole(req.headers.authorization);
+  if (role === undefined) {
+    return res.status(503).json({ error: "Não foi possível confirmar a permissão. Tente novamente." });
+  }
+  if (role?.toLowerCase() !== "admin") {
     return res.status(403).json({ error: "Acesso restrito para administradores." });
   }
 

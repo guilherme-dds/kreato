@@ -1,5 +1,5 @@
 import React, { Suspense, lazy, useState, useCallback } from "react";
-import { BrowserRouter, Navigate, Route, Routes, useLocation, useNavigate, type Location } from "react-router-dom";
+import { Navigate, Route, RouterProvider, Routes, createBrowserRouter, useLocation, useNavigate, type Location } from "react-router-dom";
 import { RefreshCw } from "lucide-react";
 import { AuthProvider, useAuth } from "./context/AuthContext";
 
@@ -139,14 +139,21 @@ const AppContent: React.FC = () => {
   );
 };
 
-export function App() {
-  return (
-    <BrowserRouter>
+// Data router: habilita useBlocker (o editor segura a navegação com alterações não salvas).
+// As rotas continuam declaradas em <Routes> dentro de AppRoutes.
+const router = createBrowserRouter([
+  {
+    path: "*",
+    element: (
       <AuthProvider>
         <AppContent />
       </AuthProvider>
-    </BrowserRouter>
-  );
+    ),
+  },
+]);
+
+export function App() {
+  return <RouterProvider router={router} />;
 }
 
 export default App;

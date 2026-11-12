@@ -17,20 +17,11 @@ redis.on("error", () => {
   // Silent catch to prevent crashing app if Redis is unreachable
 });
 
+/**
+ * IP de quem fez a requisição. O Express resolve o X-Forwarded-For só a partir dos proxies
+ * confiáveis (TRUST_PROXY), então um cabeçalho forjado pelo cliente não muda o IP registrado.
+ */
 export function getClientIp(req: Request): string {
-  const forwarded = req.headers["x-forwarded-for"];
-  if (typeof forwarded === "string") {
-    const firstIp = forwarded.split(",")[0];
-    if (firstIp) return firstIp.trim();
-  }
-  if (Array.isArray(forwarded) && forwarded[0]) {
-    const firstIp = forwarded[0];
-    if (firstIp) return firstIp.trim();
-  }
-  const realIp = req.headers["x-real-ip"];
-  if (typeof realIp === "string") {
-    return realIp.trim();
-  }
   return req.ip || req.socket?.remoteAddress || "unknown";
 }
 

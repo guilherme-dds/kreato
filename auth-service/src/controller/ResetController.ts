@@ -11,8 +11,19 @@ const INTERNAL_ERROR = "Erro interno. Tente novamente em instantes.";
 
 const stripQuotes = (value: string | undefined) => (value || "").replace(/^["']|["']$/g, "").trim();
 
+/** URL pública do frontend para o link do e-mail; em produção precisa estar configurada */
+function frontendUrl(): string {
+    const configured = stripQuotes(process.env.FRONTEND_URL).replace(/\/+$/, "");
+    if (configured) return configured;
+    if (process.env.NODE_ENV === "production") {
+        throw new Error("FRONTEND_URL não está configurada: defina a URL pública do frontend.");
+    }
+    return "http://localhost:5173";
+}
+
 /** Gera o token e envia o e-mail pelo Brevo (preferido) ou pelo Mailtrap */
 async function sendResetEmail(user: { id: string; email: string; nome: string | null }): Promise<void> {
+    const baseUrl = frontendUrl();
     const tokenRecord = await prisma.resetToken.create({
         data: {
             usuarioId: user.id,
@@ -20,14 +31,16 @@ async function sendResetEmail(user: { id: string; email: string; nome: string | 
         },
     });
 
-    const frontendUrl = process.env.FRONTEND_URL || "https://guilherme-santos-isw055.lapps.studio";
-    const resetLink = `${frontendUrl}/reset-password?token=${tokenRecord.token}`;
+    const resetLink = `${baseUrl}/reset-password?token=${tokenRecord.token}`;
     const subject = "Kreato - Redefinição de Senha";
     const textContent = `Clique no link a seguir para redefinir sua senha: ${resetLink}`;
 
     const brevoApiKey = stripQuotes(process.env.BREVO_API_KEY);
     if (brevoApiKey) {
-        const senderEmail = process.env.BREVO_SENDER_EMAIL || "guilherme.dds.dev@gmail.com";
+        const senderEmail = stripQuotes(process.env.BREVO_SENDER_EMAIL);
+        if (!senderEmail) {
+            throw new Error("BREVO_SENDER_EMAIL não está configurado (remetente verificado no Brevo).");
+        }
 
         const brevoResponse = await fetch("https://api.brevo.com/v3/smtp/email", {
             method: "POST",
@@ -37,7 +50,7 @@ async function sendResetEmail(user: { id: string; email: string; nome: string | 
                 "api-key": brevoApiKey,
             },
             body: JSON.stringify({
-                sender: { name: "Kreato", email: senderEmail.trim() },
+                sender: { name: "Kreato", email: senderEmail },
                 to: [{ email: user.email, name: user.nome || user.email }],
                 subject,
                 textContent,

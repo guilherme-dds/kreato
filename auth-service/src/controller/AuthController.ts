@@ -209,7 +209,13 @@ export class AuthController {
         return res.status(401).json({ valid: false, error: "Token invalid" });
       }
 
-      return res.json({ valid: true, userId: decoded.id, role: decoded.role });
+      // Papel atual do banco (o do token pode ter até 15 min): os serviços usam para checar admin
+      const user = await prisma.usuario.findUnique({ where: { id: decoded.id }, select: { role: true } });
+      if (!user) {
+        return res.status(401).json({ valid: false, error: "Token invalid" });
+      }
+
+      return res.json({ valid: true, userId: decoded.id, role: user.role });
     } catch {
       return res.status(401).json({ valid: false, error: "Token invalid" });
     }

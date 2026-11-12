@@ -45,7 +45,9 @@ const SEARCH_DEBOUNCE_MS = 350;
 
 export const IdeasPage: React.FC = () => {
   const { token, user } = useAuth();
-  const { showToast, openPlans } = useLayoutContext();
+  const { showToast, openPlans, workspace } = useLayoutContext();
+  // Levar ao pipeline cria o conteúdo em Roteiro: o EDITOR não cria conteúdos
+  const canConvert = workspace?.papel !== "EDITOR";
   const navigate = useNavigate();
 
   const [status, setStatus] = useState<StatusTab>("");
@@ -332,7 +334,7 @@ export const IdeasPage: React.FC = () => {
                     {formatRelativeDate(idea.atualizadoEm)}
                   </span>
                   <div className="idea-card-actions">
-                    {idea.status !== "ARQUIVADA" && (
+                    {canConvert && idea.status !== "ARQUIVADA" && (
                       <button
                         className="idea-action"
                         onClick={() => handleConvert(idea)}

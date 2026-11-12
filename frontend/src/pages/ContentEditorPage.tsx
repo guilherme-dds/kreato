@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useRef, useState } from "react";
-import { Link, useNavigate, useParams } from "react-router-dom";
+import { Link, useBlocker, useNavigate, useParams, type BlockerFunction } from "react-router-dom";
 import { ArrowLeft, Check, CheckCircle2, ExternalLink, Lightbulb, Lock, RefreshCw, Save, SquareKanban, Trash2, Wand2 } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
 import { useLayoutContext } from "../layouts/layoutContext";
@@ -132,6 +132,23 @@ export const ContentEditorPage: React.FC = () => {
     };
   }, [contentId, token]);
 
+  // Sair para outra página do app com alterações não salvas pede confirmação
+  // (refs: o bloqueio lê o estado do momento da navegação; sem sessão, a saída é livre)
+  const blockLeave = useRef(false);
+  blockLeave.current = isDirty && Boolean(token);
+  const allowLeave = useRef(false);
+  const shouldBlock = useCallback<BlockerFunction>(
+    ({ currentLocation, nextLocation }) =>
+      blockLeave.current && !allowLeave.current && currentLocation.pathname !== nextLocation.pathname,
+    []
+  );
+  const blocker = useBlocker(shouldBlock);
+  useEffect(() => {
+    if (blocker.state !== "blocked") return;
+    if (window.confirm("Há alterações não salvas. Sair mesmo assim?")) blocker.proceed();
+    else blocker.reset();
+  }, [blocker]);
+
   // Avisa antes de fechar/recarregar a aba com alterações não salvas
   useEffect(() => {
     if (!isDirty) return;
@@ -252,16 +269,15 @@ export const ContentEditorPage: React.FC = () => {
     try {
       await deleteContentApi(content.id, token);
       showToast("success", "Conteúdo excluído.");
+      allowLeave.current = true;
       navigate("/pipeline");
     } catch (err) {
       showToast("error", err instanceof Error ? err.message : "Erro ao excluir conteúdo");
     }
   };
 
-  const goBack = () => {
-    if (isDirty && !window.confirm("Há alterações não salvas. Sair mesmo assim?")) return;
-    navigate("/pipeline");
-  };
+  // A confirmação de saída com alterações não salvas fica no bloqueio acima
+  const goBack = () => navigate("/pipeline");
 
   if (isLoading) {
     return (

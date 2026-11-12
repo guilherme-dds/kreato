@@ -33,11 +33,15 @@ export async function sendEmail(message: EmailMessage): Promise<EmailResult> {
   try {
     const brevoKey = readSecret("BREVO_API_KEY");
     if (brevoKey) {
+      const sender = readSecret("BREVO_SENDER_EMAIL");
+      if (!sender) {
+        return { enviado: false, provedor: "brevo", erro: "BREVO_SENDER_EMAIL não está configurado." };
+      }
       const response = await fetch("https://api.brevo.com/v3/smtp/email", {
         method: "POST",
         headers: { accept: "application/json", "content-type": "application/json", "api-key": brevoKey },
         body: JSON.stringify({
-          sender: { name: "Kreato", email: readSecret("BREVO_SENDER_EMAIL") || "guilherme.dds.dev@gmail.com" },
+          sender: { name: "Kreato", email: sender },
           to: [recipient],
           subject: message.subject,
           textContent: message.text,

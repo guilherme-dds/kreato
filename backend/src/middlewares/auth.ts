@@ -1,5 +1,6 @@
 import type { Request, Response, NextFunction } from "express";
 import jwt from "jsonwebtoken";
+import prisma from "../utils/prisma.js";
 import { logEvent } from "../utils/logger.js";
 
 export async function AuthMiddleware(
@@ -74,7 +75,11 @@ export async function AdminMiddleware(
   res: Response,
   next: NextFunction,
 ) {
-  if (req.userRole?.toLowerCase() !== "admin") {
+  // O papel vem do banco: quem perde o acesso de admin perde na hora, sem esperar o token vencer
+  const user = req.userId
+    ? await prisma.usuario.findUnique({ where: { id: req.userId }, select: { role: true } }).catch(() => null)
+    : null;
+  if (user?.role?.toLowerCase() !== "admin") {
     await logEvent({ userId: req.userId, acao: "PERMISSION_DENIED", req });
     return res.status(403).json({ error: "Acesso restrito para administradores." });
   }
