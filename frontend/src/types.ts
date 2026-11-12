@@ -15,12 +15,12 @@ export interface User {
 export interface AuthResponse {
   user: User;
   token: string;
-  refreshToken?: string;
 }
 
+/** O refresh token novo vem no cookie httpOnly; o corpo traz o access token e o usuário atualizado */
 export interface RefreshTokenResponse {
   token: string;
-  refreshToken?: string;
+  user?: User;
 }
 
 export type Platform = "TIKTOK" | "INSTAGRAM" | "YOUTUBE" | "OUTRA";
@@ -113,6 +113,8 @@ export interface TeamMember {
   criadoEm: string;
   usuario: { id: string; nome: string; email: string; fotoPerfil: string | null };
   souEu?: boolean;
+  /** Fora das vagas do plano depois de um downgrade: segue na equipe, sem acesso */
+  semVaga?: boolean;
 }
 
 export interface TeamResponse {

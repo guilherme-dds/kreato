@@ -208,7 +208,7 @@ export class UserController {
     } catch (error: any) {
       console.error("Erro ao fazer upload da foto de perfil:", error);
       return res.status(500).json({
-        error: error.message || "Erro ao processar e salvar a foto de perfil.",
+        error: "Erro ao processar e salvar a foto de perfil.",
       });
     }
   }

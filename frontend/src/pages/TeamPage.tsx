@@ -252,6 +252,11 @@ export const TeamPage: React.FC = () => {
                       <span className="team-row-name">
                         {member.usuario.nome}
                         {isMe && <span className="team-you">você</span>}
+                        {member.semVaga && (
+                          <span className="team-no-seat" title="Fora das vagas do plano atual: está sem acesso até liberar uma vaga ou mudar de plano">
+                            sem vaga
+                          </span>
+                        )}
                       </span>
                       <span className="team-row-sub">
                         {member.usuario.email} · entrou {formatRelativeDate(member.criadoEm)}

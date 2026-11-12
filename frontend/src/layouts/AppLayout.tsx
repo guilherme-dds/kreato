@@ -87,9 +87,15 @@ export const AppLayout: React.FC<AppLayoutProps> = ({ showToast }) => {
 
   // O servidor recusou o workspace salvo (ex.: a pessoa foi removida da equipe)
   useEffect(() => {
-    const handleLost = () => {
+    const handleLost = (event: Event) => {
       setSelectedId(null);
-      showToast("error", "Você não tem mais acesso a esse workspace. Voltamos para o seu workspace pessoal.");
+      const code = (event as CustomEvent<{ code?: string }>).detail?.code;
+      showToast(
+        "error",
+        code === "WORKSPACE_SEAT_UNAVAILABLE"
+          ? "O plano desse workspace não tem mais vaga para você. Voltamos para o seu workspace pessoal."
+          : "Você não tem mais acesso a esse workspace. Voltamos para o seu workspace pessoal."
+      );
       refreshWorkspaces();
     };
     window.addEventListener(WORKSPACE_LOST_EVENT, handleLost);

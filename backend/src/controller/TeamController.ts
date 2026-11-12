@@ -3,7 +3,7 @@ import prisma from "../utils/prisma.js";
 import { logEvent } from "../utils/logger.js";
 import { getPlanLimits } from "../utils/plans.js";
 import { parsePositiveInt } from "../utils/request.js";
-import { canManageWorkspace, normalizeWorkspaceRole, WORKSPACE_ROLES } from "../utils/workspaces.js";
+import { canManageWorkspace, membersWithoutSeat, normalizeWorkspaceRole, WORKSPACE_ROLES } from "../utils/workspaces.js";
 import { canAssignRole, canManageMember, parseAssignableRole } from "../utils/team.js";
 
 const memberSelect = {
@@ -21,11 +21,12 @@ export class TeamController {
   async index(req: Request, res: Response) {
     try {
       const now = new Date();
-      const [members, pendingInvites] = await Promise.all([
+      const [members, pendingInvites, workspace] = await Promise.all([
         prisma.membroWorkspace.findMany({ where: { workspaceId: req.workspaceId }, select: memberSelect }),
         prisma.convite.count({
           where: { workspaceId: req.workspaceId, status: "PENDENTE", expiraEm: { gt: now } },
         }),
+        prisma.workspace.findUniqueOrThrow({ where: { id: req.workspaceId }, select: { donoId: true } }),
       ]);
 
       // DONO primeiro, depois por papel e antiguidade
@@ -33,11 +34,14 @@ export class TeamController {
       members.sort((a, b) => rank(a.papel) - rank(b.papel) || a.criadoEm.getTime() - b.criadoEm.getTime());
 
       const limit = getPlanLimits(req.workspacePlan).membros;
+      const withoutSeat = membersWithoutSeat(members, workspace.donoId, limit);
       return res.json({
         membros: members.map((member) => ({
           ...member,
           papel: normalizeWorkspaceRole(member.papel),
           souEu: member.usuario.id === req.userId,
+          // Fora das vagas após um downgrade: continua na equipe, mas sem acesso
+          semVaga: withoutSeat.has(member.id),
         })),
         meuPapel: req.workspaceRole,
         podeGerenciar: canManageWorkspace(req.workspaceRole),

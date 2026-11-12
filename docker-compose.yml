@@ -32,6 +32,10 @@ services:
       REDIS_URL: redis://redis:6379
       JWT_SECRET: ${JWT_SECRET}
       AUTH_SERVICE_URL: http://auth-service:3334
+      # Segurança: docs da API, proxies confiáveis e origens de CORS (vazio = só o mesmo domínio)
+      ENABLE_API_DOCS: ${ENABLE_API_DOCS:-false}
+      TRUST_PROXY: ${TRUST_PROXY:-}
+      CORS_ORIGINS: ${CORS_ORIGINS:-}
     depends_on:
       - redis
       - auth-service
@@ -75,6 +79,12 @@ services:
       BREVO_SENDER_EMAIL: ${BREVO_SENDER_EMAIL}
       FRONTEND_URL: ${FRONTEND_URL}
       REDIS_URL: redis://redis:6379
+      # Segurança: docs da API, proxies confiáveis e origens de CORS (vazio = só o mesmo domínio)
+      ENABLE_API_DOCS: ${ENABLE_API_DOCS:-false}
+      TRUST_PROXY: ${TRUST_PROXY:-}
+      CORS_ORIGINS: ${CORS_ORIGINS:-}
+      # Cookie da sessão só por HTTPS; vazio = detecta pelo X-Forwarded-Proto
+      COOKIE_SECURE: ${COOKIE_SECURE:-}
     depends_on:
       - redis
     restart: unless-stopped
@@ -117,6 +127,10 @@ services:
       MAILTRAP_TOKEN: ${MAILTRAP_TOKEN:-}
       MAILTRAP_SENDER_EMAIL: ${MAILTRAP_SENDER_EMAIL:-}
       FRONTEND_URL: ${FRONTEND_URL}
+      # Segurança: docs da API, proxies confiáveis e origens de CORS (vazio = só o mesmo domínio)
+      ENABLE_API_DOCS: ${ENABLE_API_DOCS:-false}
+      TRUST_PROXY: ${TRUST_PROXY:-}
+      CORS_ORIGINS: ${CORS_ORIGINS:-}
     depends_on:
       - auth-service
       - redis

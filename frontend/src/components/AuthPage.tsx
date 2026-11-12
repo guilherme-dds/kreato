@@ -3,7 +3,7 @@ import { useLocation } from "react-router-dom";
 import { Mail, Lock, User as UserIcon, Eye, EyeOff, LogIn, UserPlus } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
 import { AuthLayout } from "./AuthLayout";
-import { requestPasswordResetApi } from "../api/backend";
+import { MIN_PASSWORD_LENGTH, requestPasswordResetApi } from "../api/backend";
 
 interface AuthPageProps {
   showToast: (type: "success" | "error", text: string) => void;
@@ -32,10 +32,12 @@ export const AuthPage: React.FC<AuthPageProps> = ({ showToast }) => {
       if (isForgotPassword) {
         await requestPasswordResetApi(email);
         setResetSuccess(true);
-        showToast("success", "E-mail de redefinição enviado com sucesso!");
       } else if (isRegister) {
         if (!nome.trim()) {
           throw new Error("Por favor, informe seu nome.");
+        }
+        if (password.length < MIN_PASSWORD_LENGTH) {
+          throw new Error(`A senha deve ter pelo menos ${MIN_PASSWORD_LENGTH} caracteres.`);
         }
         await register(nome, email, password);
         showToast("success", "Conta criada com sucesso! Bem-vindo ao Kreato.");
@@ -105,7 +107,7 @@ export const AuthPage: React.FC<AuthPageProps> = ({ showToast }) => {
       {resetSuccess ? (
         <div className="auth-done">
           <p>
-            Enviamos um e-mail para <strong>{email}</strong> com o link para redefinir sua senha.
+            Se houver uma conta com <strong>{email}</strong>, enviaremos um link para redefinir a senha. Confira também a caixa de spam.
           </p>
 
           <button
@@ -169,9 +171,11 @@ export const AuthPage: React.FC<AuthPageProps> = ({ showToast }) => {
                 <Lock className="input-icon" size={18} />
                 <input
                   type={showPassword ? "text" : "password"}
-                  placeholder="••••••••"
+                  placeholder={isRegister ? `Mínimo de ${MIN_PASSWORD_LENGTH} caracteres` : "••••••••"}
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
+                  minLength={isRegister ? MIN_PASSWORD_LENGTH : undefined}
+                  autoComplete={isRegister ? "new-password" : "current-password"}
                   required
                 />
                 <button

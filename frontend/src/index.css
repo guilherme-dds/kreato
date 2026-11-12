@@ -5477,6 +5477,21 @@ button.attachment-info:hover .attachment-name {
   color: var(--ink-2);
 }
 
+/* Membro fora das vagas do plano após um downgrade */
+.team-no-seat {
+  padding: 1px 5px;
+  border-radius: var(--radius-xs);
+  background: var(--caution-wash);
+  box-shadow: inset 0 0 0 1px var(--caution-line);
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 400;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--caution);
+  cursor: help;
+}
+
 .team-row-actions {
   display: flex;
   align-items: center;

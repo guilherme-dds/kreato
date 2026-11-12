@@ -28,6 +28,41 @@ const membershipInclude = {
 
 export type MembershipWithWorkspace = Prisma.MembroWorkspaceGetPayload<{ include: typeof membershipInclude }>;
 
+/**
+ * Vagas do plano: o dono ocupa a primeira e as demais seguem a ordem de entrada.
+ * Depois de um downgrade, quem passou do limite perde o acesso até o dono liberar
+ * vagas (removendo alguém) ou voltar a um plano maior; ninguém é apagado.
+ */
+export async function holdsSeat(membership: MembershipWithWorkspace, limit: number): Promise<boolean> {
+  if (!Number.isFinite(limit) || membership.usuarioId === membership.workspace.donoId) return true;
+
+  const ahead = await prisma.membroWorkspace.count({
+    where: {
+      workspaceId: membership.workspaceId,
+      usuarioId: { not: membership.workspace.donoId },
+      OR: [
+        { criadoEm: { lt: membership.criadoEm } },
+        { criadoEm: membership.criadoEm, id: { lt: membership.id } },
+      ],
+    },
+  });
+
+  return 1 + ahead < limit;
+}
+
+/** Ids dos membros que estão fora das vagas do plano (mesma ordem de holdsSeat) */
+export function membersWithoutSeat(
+  members: { id: number; criadoEm: Date; usuario: { id: string } }[],
+  ownerId: string,
+  limit: number,
+): Set<number> {
+  if (!Number.isFinite(limit)) return new Set();
+  const others = members
+    .filter((member) => member.usuario.id !== ownerId)
+    .sort((a, b) => a.criadoEm.getTime() - b.criadoEm.getTime() || a.id - b.id);
+  return new Set(others.slice(Math.max(0, limit - 1)).map((member) => member.id));
+}
+
 export function findMembership(workspaceId: string, userId: string): Promise<MembershipWithWorkspace | null> {
   return prisma.membroWorkspace.findUnique({
     where: { workspaceId_usuarioId: { workspaceId, usuarioId: userId } },

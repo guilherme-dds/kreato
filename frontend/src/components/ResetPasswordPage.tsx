@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import { Lock, Eye, EyeOff, CheckCircle, ArrowLeft } from "lucide-react";
 import { AuthLayout } from "./AuthLayout";
-import { confirmPasswordResetApi } from "../api/backend";
+import { MIN_PASSWORD_LENGTH, confirmPasswordResetApi } from "../api/backend";
 
 interface ResetPasswordPageProps {
   token?: string;
@@ -33,8 +33,8 @@ export const ResetPasswordPage: React.FC<ResetPasswordPageProps> = ({
       return;
     }
 
-    if (newPassword.length < 6) {
-      setError("A nova senha deve ter pelo menos 6 caracteres.");
+    if (newPassword.length < MIN_PASSWORD_LENGTH) {
+      setError(`A nova senha deve ter pelo menos ${MIN_PASSWORD_LENGTH} caracteres.`);
       return;
     }
 
@@ -48,7 +48,7 @@ export const ResetPasswordPage: React.FC<ResetPasswordPageProps> = ({
     try {
       await confirmPasswordResetApi(token, newPassword);
       setSuccess(true);
-      showToast("success", "Sua senha foi redefinida com sucesso!");
+      showToast("success", "Senha redefinida. Por segurança, as outras sessões foram encerradas.");
     } catch (err: any) {
       const msg = err.message || "Falha ao redefinir a senha. O token pode estar expirado.";
       setError(msg);

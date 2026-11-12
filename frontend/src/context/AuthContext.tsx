@@ -1,11 +1,18 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from "react";
-import type { User, AuthResponse } from "../types";
-import { loginApi, registerApi, refreshTokenApi, logoutApi, isJwtExpired } from "../api/backend";
+import type { User, RefreshTokenResponse } from "../types";
+import {
+  AUTH_TOKEN_EVENT,
+  getAccessToken,
+  isJwtExpired,
+  loginApi,
+  logoutApi,
+  refreshTokenApi,
+  registerApi,
+} from "../api/backend";
 
 interface AuthContextType {
   user: User | null;
   token: string | null;
-  refreshToken: string | null;
   isAuthenticated: boolean;
   isLoading: boolean;
   login: (email: string, pass: string) => Promise<void>;
@@ -17,66 +24,76 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
+/** Só os dados de exibição do usuário ficam no navegador; tokens nunca */
+const USER_KEY = "auth_user";
+
+function readStoredUser(): User | null {
+  try {
+    return JSON.parse(localStorage.getItem(USER_KEY) || "null");
+  } catch {
+    return null;
+  }
+}
+
+function storeUser(user: User | null): void {
+  try {
+    if (user) localStorage.setItem(USER_KEY, JSON.stringify(user));
+    else localStorage.removeItem(USER_KEY);
+  } catch {
+    // sem storage: a sessão segue só em memória
+  }
+}
+
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
   const [token, setToken] = useState<string | null>(null);
-  const [refreshToken, setRefreshToken] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
   const updateUser = useCallback((updatedFields: Partial<User>) => {
     setUser((prev) => {
       if (!prev) return null;
       const newUser = { ...prev, ...updatedFields };
-      localStorage.setItem("auth_user", JSON.stringify(newUser));
+      storeUser(newUser);
       return newUser;
     });
   }, []);
 
-  const logout = useCallback(() => {
-    const currentToken = token || localStorage.getItem("auth_token");
-    const currentRefresh = refreshToken || localStorage.getItem("auth_refresh_token");
-    const storedUserStr = localStorage.getItem("auth_user");
-    let currentUserId = user?.id;
-    if (!currentUserId && storedUserStr) {
-      try {
-        currentUserId = JSON.parse(storedUserStr)?.id;
-      } catch { }
-    }
-
-    logoutApi(currentToken, currentRefresh, currentUserId);
-
+  const clearSession = useCallback(() => {
     setToken(null);
-    setRefreshToken(null);
     setUser(null);
-    localStorage.removeItem("auth_token");
-    localStorage.removeItem("auth_refresh_token");
-    localStorage.removeItem("auth_user");
-  }, [token, refreshToken, user]);
+    storeUser(null);
+  }, []);
+
+  const logout = useCallback(() => {
+    const currentUserId = user?.id ?? readStoredUser()?.id ?? null;
+    logoutApi(getAccessToken() ?? token, currentUserId);
+    clearSession();
+  }, [token, user, clearSession]);
 
   const refreshSession = useCallback(async (): Promise<string | null> => {
-    const storedRefreshToken = refreshToken || localStorage.getItem("auth_refresh_token");
-    if (!storedRefreshToken) {
-      logout();
-      return null;
-    }
-
     try {
-      const data = await refreshTokenApi(storedRefreshToken);
-      setToken(data.token);
-      localStorage.setItem("auth_token", data.token);
-
-      if (data.refreshToken) {
-        setRefreshToken(data.refreshToken);
-        localStorage.setItem("auth_refresh_token", data.refreshToken);
-      }
-
+      const data = await refreshTokenApi();
       return data.token;
     } catch (err) {
       console.error("Erro ao renovar token de acesso:", err);
       logout();
       return null;
     }
-  }, [refreshToken, logout]);
+  }, [logout]);
+
+  // Toda renovação (inclusive as feitas pelas requisições da API) atualiza o estado aqui
+  useEffect(() => {
+    const handleToken = (event: Event) => {
+      const data = (event as CustomEvent<RefreshTokenResponse>).detail;
+      setToken(data.token);
+      if (data.user) {
+        setUser(data.user);
+        storeUser(data.user);
+      }
+    };
+    window.addEventListener(AUTH_TOKEN_EVENT, handleToken);
+    return () => window.removeEventListener(AUTH_TOKEN_EVENT, handleToken);
+  }, []);
 
   // Listener global para eventos de requisição não autorizada (401)
   useEffect(() => {
@@ -89,81 +106,57 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     };
   }, [logout]);
 
-  // Restauração inicial de sessão com verificação proativa do JWT.
-  // Roda apenas na montagem: depender de `logout` (recriado a cada mudança de user/token)
-  // fazia o efeito reexecutar e chamar setUser em loop infinito.
+  // Restauração da sessão ao abrir a página: o cookie httpOnly gera um access token novo.
+  // Só tenta quando há sinal de login anterior, para não disparar um 401 em toda visita anônima.
   useEffect(() => {
-    const storedToken = localStorage.getItem("auth_token");
-    const storedRefreshToken = localStorage.getItem("auth_refresh_token");
-    const storedUser = localStorage.getItem("auth_user");
-
-    if (storedToken && storedUser) {
-      if (isJwtExpired(storedToken)) {
-        if (storedRefreshToken) {
-          refreshTokenApi(storedRefreshToken)
-            .then((data) => {
-              setToken(data.token);
-              localStorage.setItem("auth_token", data.token);
-              if (data.refreshToken) {
-                setRefreshToken(data.refreshToken);
-                localStorage.setItem("auth_refresh_token", data.refreshToken);
-              }
-              setUser(JSON.parse(storedUser));
-            })
-            .catch(() => {
-              logout();
-            })
-            .finally(() => {
-              setIsLoading(false);
-            });
-          return;
-        } else {
-          logout();
-          setIsLoading(false);
-          return;
-        }
-      } else {
-        try {
-          setToken(storedToken);
-          setRefreshToken(storedRefreshToken);
-          setUser(JSON.parse(storedUser));
-        } catch (err) {
-          console.error("Erro ao restaurar sessão:", err);
-          logout();
-        }
+    const storedUser = readStoredUser();
+    const hadLegacySession = (() => {
+      try {
+        return localStorage.getItem("auth_refresh_token") !== null;
+      } catch {
+        return false;
       }
-    }
-    setIsLoading(false);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+    })();
 
-  // Monitoramento periódico da validade do JWT para logout/refresh automático
+    if (!storedUser && !hadLegacySession) {
+      setIsLoading(false);
+      return;
+    }
+
+    refreshTokenApi()
+      .then((data) => {
+        setToken(data.token);
+        const restored = data.user ?? storedUser;
+        setUser(restored);
+        storeUser(restored);
+      })
+      .catch(() => {
+        clearSession();
+      })
+      .finally(() => {
+        setIsLoading(false);
+      });
+  }, [clearSession]);
+
+  // Renova pouco antes de o access token vencer, para a próxima ação não esperar
   useEffect(() => {
     if (!token) return;
 
     const checkInterval = setInterval(() => {
-      const currentToken = token || localStorage.getItem("auth_token");
-      if (currentToken && isJwtExpired(currentToken)) {
-        refreshSession().catch(() => {
-          logout();
-        });
+      const current = getAccessToken() ?? token;
+      if (isJwtExpired(current)) {
+        refreshSession();
       }
     }, 10000);
 
     return () => clearInterval(checkInterval);
-  }, [token, refreshSession, logout]);
+  }, [token, refreshSession]);
 
   const login = async (email: string, pass: string) => {
-    const data: AuthResponse = await loginApi(email, pass);
+    const data = await loginApi(email, pass);
     setToken(data.token);
     setUser(data.user);
-    localStorage.setItem("auth_token", data.token);
-    localStorage.setItem("auth_user", JSON.stringify(data.user));
-
-    if (data.refreshToken) {
-      setRefreshToken(data.refreshToken);
-      localStorage.setItem("auth_refresh_token", data.refreshToken);
-    }
+    storeUser(data.user);
   };
 
   const register = async (nome: string, email: string, pass: string) => {
@@ -177,7 +170,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       value={{
         user,
         token,
-        refreshToken,
         isAuthenticated: !!token,
         isLoading,
         login,

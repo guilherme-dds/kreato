@@ -121,6 +121,9 @@ export function setSelectedWorkspaceId(workspaceId: string | null): void {
 /** Disparado quando o servidor recusa o workspace salvo (ex.: a pessoa foi removida da equipe) */
 export const WORKSPACE_LOST_EVENT = "workspace:lost";
 
+/** Mesmo mínimo exigido pelo auth-service no cadastro e na redefinição */
+export const MIN_PASSWORD_LENGTH = 8;
+
 async function parseResponse<T>(response: Response, defaultErrorMessage: string): Promise<T> {
   const text = await response.text();
   let data: any;
@@ -137,27 +140,91 @@ async function parseResponse<T>(response: Response, defaultErrorMessage: string)
   return data as T;
 }
 
+/* ==========================================================================
+   SESSÃO
+   O access token (15 min) vive só em memória; o refresh token fica num cookie httpOnly
+   que o JavaScript não lê. Ao recarregar a página, a sessão volta pelo /auth/refresh.
+   ========================================================================== */
+
+let accessToken: string | null = null;
+let refreshInFlight: Promise<RefreshTokenResponse> | null = null;
+
+/** Disparado com o novo access token sempre que a sessão é renovada */
+export const AUTH_TOKEN_EVENT = "auth:token";
+/** Sessões abertas antes da mudança para cookie guardavam o refresh token aqui */
+const LEGACY_REFRESH_KEY = "auth_refresh_token";
+
+export function getAccessToken(): string | null {
+  return accessToken;
+}
+
+export function setAccessToken(token: string | null): void {
+  accessToken = token;
+}
+
+/** Remove os tokens que versões antigas deixavam no localStorage */
+export function clearLegacyTokens(): void {
+  try {
+    localStorage.removeItem("auth_token");
+    localStorage.removeItem(LEGACY_REFRESH_KEY);
+  } catch {
+    // sem storage: nada a limpar
+  }
+}
+
 export async function loginApi(email: string, password: string): Promise<AuthResponse> {
   const response = await fetch(`${API_BASE_URL}/auth`, {
     method: "POST",
+    credentials: "include",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ email, password }),
   });
 
-  return parseResponse<AuthResponse>(response, "Falha na autenticação");
+  const data = await parseResponse<AuthResponse>(response, "Falha na autenticação");
+  setAccessToken(data.token);
+  clearLegacyTokens();
+  return data;
 }
 
-export async function refreshTokenApi(refreshToken: string): Promise<RefreshTokenResponse> {
+async function requestRefresh(): Promise<RefreshTokenResponse> {
+  let legacy: string | null = null;
+  try {
+    legacy = localStorage.getItem(LEGACY_REFRESH_KEY);
+  } catch {
+    legacy = null;
+  }
+
   const response = await fetch(`${API_BASE_URL}/auth/refresh`, {
     method: "POST",
+    credentials: "include",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ refreshToken }),
+    // O cookie é o caminho normal; o corpo só migra uma sessão antiga para o cookie
+    body: JSON.stringify(legacy ? { refreshToken: legacy } : {}),
   });
 
-  return parseResponse<RefreshTokenResponse>(response, "Falha ao renovar sessão");
+  const data = await parseResponse<RefreshTokenResponse>(response, "Falha ao renovar sessão");
+  setAccessToken(data.token);
+  clearLegacyTokens();
+  window.dispatchEvent(new CustomEvent(AUTH_TOKEN_EVENT, { detail: data }));
+  return data;
 }
 
-export async function logoutApi(token?: string | null, refreshToken?: string | null, userId?: string | null): Promise<void> {
+/**
+ * Renova a sessão. Chamadas simultâneas (várias requisições recebendo 401 ao mesmo tempo)
+ * compartilham uma única ida ao servidor, já que cada renovação troca o refresh token.
+ */
+export function refreshTokenApi(): Promise<RefreshTokenResponse> {
+  if (!refreshInFlight) {
+    refreshInFlight = requestRefresh().finally(() => {
+      refreshInFlight = null;
+    });
+  }
+  return refreshInFlight;
+}
+
+export async function logoutApi(token?: string | null, userId?: string | null): Promise<void> {
+  setAccessToken(null);
+  clearLegacyTokens();
   try {
     const headers: Record<string, string> = { "Content-Type": "application/json" };
     if (token) {
@@ -165,8 +232,9 @@ export async function logoutApi(token?: string | null, refreshToken?: string | n
     }
     await fetch(`${API_BASE_URL}/auth/logout`, {
       method: "POST",
+      credentials: "include",
       headers,
-      body: JSON.stringify({ refreshToken, userId }),
+      body: JSON.stringify({ userId }),
     });
   } catch {
     // Silent catch on logout network error
@@ -229,26 +297,20 @@ export function isJwtExpired(tokenString?: string | null): boolean {
  * Renova o token antes de enviar se ele já expirou, e repete uma vez após um 401.
  */
 async function authorizedFetch(path: string, options: RequestInit = {}, token?: string | null): Promise<Response> {
-  let activeToken = token || localStorage.getItem("auth_token");
+  // O token em memória é sempre o mais novo; o recebido por parâmetro pode ter ficado para trás
+  let activeToken = getAccessToken() || token || null;
 
-  // Se o token estiver expirado antes da requisição, tenta renovar antes de enviar
-  if (activeToken && isJwtExpired(activeToken)) {
-    const storedRefresh = localStorage.getItem("auth_refresh_token");
-    if (storedRefresh) {
-      try {
-        const refreshData = await refreshTokenApi(storedRefresh);
-        activeToken = refreshData.token;
-        localStorage.setItem("auth_token", refreshData.token);
-        if (refreshData.refreshToken) {
-          localStorage.setItem("auth_refresh_token", refreshData.refreshToken);
-        }
-      } catch {
-        window.dispatchEvent(new Event("auth:unauthorized"));
-        throw new Error("Sessão expirada. Por favor faça login novamente.");
-      }
-    } else {
-      window.dispatchEvent(new Event("auth:unauthorized"));
-      throw new Error("Sessão expirada. Por favor faça login novamente.");
+  const expireSession = (): never => {
+    window.dispatchEvent(new Event("auth:unauthorized"));
+    throw new Error("Sessão expirada. Por favor faça login novamente.");
+  };
+
+  // Token vencido (ou ausente após recarregar a página): renova antes de enviar
+  if (!activeToken || isJwtExpired(activeToken)) {
+    try {
+      activeToken = (await refreshTokenApi()).token;
+    } catch {
+      return expireSession();
     }
   }
 
@@ -272,30 +334,18 @@ async function authorizedFetch(path: string, options: RequestInit = {}, token?: 
     headers,
   });
 
-  // Se o servidor retornar 401, tenta renovar o token e tentar a requisição novamente uma vez
+  // Se o servidor retornar 401, renova a sessão e repete a requisição uma vez
   if (response.status === 401) {
-    const storedRefresh = localStorage.getItem("auth_refresh_token");
-    if (storedRefresh) {
-      try {
-        const refreshData = await refreshTokenApi(storedRefresh);
-        activeToken = refreshData.token;
-        localStorage.setItem("auth_token", refreshData.token);
-        if (refreshData.refreshToken) {
-          localStorage.setItem("auth_refresh_token", refreshData.refreshToken);
-        }
-        headers["Authorization"] = `Bearer ${activeToken}`;
-        response = await fetch(`${API_BASE_URL}${path}`, {
-          ...options,
-          headers,
-        });
-      } catch {
-        window.dispatchEvent(new Event("auth:unauthorized"));
-        throw new Error("Sessão expirada. Por favor faça login novamente.");
-      }
-    } else {
-      window.dispatchEvent(new Event("auth:unauthorized"));
-      throw new Error("Sessão expirada. Por favor faça login novamente.");
+    try {
+      activeToken = (await refreshTokenApi()).token;
+    } catch {
+      return expireSession();
     }
+    headers["Authorization"] = `Bearer ${activeToken}`;
+    response = await fetch(`${API_BASE_URL}${path}`, {
+      ...options,
+      headers,
+    });
   }
 
   if (response.status === 401) {
@@ -305,9 +355,10 @@ async function authorizedFetch(path: string, options: RequestInit = {}, token?: 
   // Perdeu o acesso ao workspace salvo: descarta a seleção para as próximas requisições
   if (response.status === 403 && workspaceId) {
     const body = await response.clone().json().catch(() => null);
-    if (body?.code === "WORKSPACE_FORBIDDEN" && getSelectedWorkspaceId() === workspaceId) {
+    const lostAccess = body?.code === "WORKSPACE_FORBIDDEN" || body?.code === "WORKSPACE_SEAT_UNAVAILABLE";
+    if (lostAccess && getSelectedWorkspaceId() === workspaceId) {
       setSelectedWorkspaceId(null);
-      window.dispatchEvent(new CustomEvent(WORKSPACE_LOST_EVENT, { detail: { workspaceId } }));
+      window.dispatchEvent(new CustomEvent(WORKSPACE_LOST_EVENT, { detail: { workspaceId, code: body.code } }));
     }
   }
 
@@ -348,24 +399,14 @@ export async function updateUserProfileApi(token: string | null, bio: string, no
 }
 
 export async function uploadUserAvatarApi(file: File, token?: string | null): Promise<User> {
-  const activeToken = token || localStorage.getItem("auth_token");
   const formData = new FormData();
   formData.append("avatar", file);
 
-  const headers: Record<string, string> = {};
-  if (activeToken) {
-    headers["Authorization"] = `Bearer ${activeToken}`;
-  }
-
-  const response = await fetch(`${API_BASE_URL}/user/avatar`, {
-    method: "POST",
-    headers,
-    body: formData,
-  });
-
-  const data = await parseResponse<{ user: User; message: string }>(
-    response,
-    "Erro ao enviar foto de perfil para o MinIO"
+  const data = await fetchWithAuth<{ user: User; message: string }>(
+    "/user/avatar",
+    { method: "POST", body: formData },
+    token,
+    "Erro ao enviar foto de perfil"
   );
   return data.user;
 }

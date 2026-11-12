@@ -1,9 +1,10 @@
 import type { Request, Response, NextFunction } from "express";
 import { logEvent } from "../utils/logger.js";
-import { normalizePlan } from "../utils/plans.js";
+import { getPlanLimits, normalizePlan } from "../utils/plans.js";
 import {
   ensurePersonalWorkspace,
   findMembership,
+  holdsSeat,
   normalizeWorkspaceRole,
   type WorkspaceRole,
 } from "../utils/workspaces.js";
@@ -38,9 +39,27 @@ export async function WorkspaceMiddleware(
       return res.status(403).json({ error: "Você não tem acesso a este workspace.", code: "WORKSPACE_FORBIDDEN" });
     }
 
+    const plan = normalizePlan(membership.workspace.dono.plano);
+
+    // Plano do dono encolheu e a pessoa ficou fora das vagas: sem acesso até o dono resolver
+    if (!(await holdsSeat(membership, getPlanLimits(plan).membros))) {
+      await logEvent({
+        userId: req.userId,
+        acao: "PERMISSION_DENIED",
+        req,
+        entidade: "workspace",
+        entidadeId: membership.workspaceId,
+        detalhes: { motivo: "SEM_VAGA_NO_PLANO", plano: plan },
+      });
+      return res.status(403).json({
+        error: "O plano deste workspace não tem mais vaga para você. Fale com o dono do workspace.",
+        code: "WORKSPACE_SEAT_UNAVAILABLE",
+      });
+    }
+
     req.workspaceId = membership.workspaceId;
     req.workspaceRole = normalizeWorkspaceRole(membership.papel);
-    req.workspacePlan = normalizePlan(membership.workspace.dono.plano);
+    req.workspacePlan = plan;
 
     return next();
   } catch (error) {
