@@ -1,8 +1,10 @@
 import React from "react";
 import { Link } from "react-router-dom";
-import { CalendarClock, CheckCircle2, ChevronLeft, ChevronRight, ExternalLink, MessageSquare } from "lucide-react";
+import { CheckCircle2, ChevronLeft, ChevronRight, ExternalLink, MessageSquare } from "lucide-react";
 import type { Content } from "../../types";
-import { CONTENT_FORMAT_LABELS, CONTENT_STAGE_LABELS, CONTENT_STAGES, PLATFORM_LABELS, formatDateTime } from "../../utils/content";
+import { CONTENT_FORMAT_LABELS, CONTENT_STAGE_LABELS, CONTENT_STAGES, PLATFORM_LABELS, sceneNumber } from "../../utils/content";
+import { slateDay, slateTime } from "../../utils/dates";
+import { ProductionStrip } from "./ProductionStrip";
 
 interface ContentCardProps {
   content: Content;
@@ -31,10 +33,15 @@ export const ContentCard: React.FC<ContentCardProps> = ({
   const canGoForward = nextStage !== undefined && content.permissoes.moverPara.includes(nextStage);
   const isOverdue =
     content.etapa === "AGENDADO" && content.dataPublicacao !== null && new Date(content.dataPublicacao) < new Date();
+  const publishDate = content.dataPublicacao ? new Date(content.dataPublicacao) : null;
+  const meta = [
+    content.plataforma && PLATFORM_LABELS[content.plataforma],
+    content.formato && CONTENT_FORMAT_LABELS[content.formato],
+  ].filter(Boolean) as string[];
 
   return (
     <article
-      className={`kanban-card ${isDragging ? "is-dragging" : ""} ${isBusy ? "is-busy" : ""}`}
+      className={`kanban-card stage-${content.etapa.toLowerCase()} ${isDragging ? "is-dragging" : ""} ${isBusy ? "is-busy" : ""}`}
       data-card-id={content.id}
       draggable={!isBusy && canMoveElsewhere}
       onDragStart={(e) => {
@@ -44,28 +51,38 @@ export const ContentCard: React.FC<ContentCardProps> = ({
       }}
       onDragEnd={onDragEnd}
     >
-      {(content.plataforma || content.formato) && (
-        <div className="kanban-card-badges">
-          {content.plataforma && (
-            <span className={`idea-badge platform-${content.plataforma.toLowerCase()}`}>
-              {PLATFORM_LABELS[content.plataforma]}
-            </span>
-          )}
-          {content.formato && <span className="idea-badge">{CONTENT_FORMAT_LABELS[content.formato]}</span>}
-        </div>
-      )}
+      <header className="slate-band">
+        <span className="slate-scene timecode">CENA {sceneNumber(content.id)}</span>
+        {content.etapa === "GRAVACAO" && (
+          <span className="slate-rec">
+            <span className="rec-dot" aria-hidden="true" />
+            REC
+          </span>
+        )}
+      </header>
 
-      <Link to={`/pipeline/${content.id}`} className="kanban-card-title" draggable={false}>
-        {content.titulo}
-      </Link>
+      <div className="slate-body">
+        <Link to={`/pipeline/${content.id}`} className="kanban-card-title" draggable={false}>
+          {content.titulo}
+        </Link>
 
-      {content.dataPublicacao && (
-        <span className={`kanban-card-date ${isOverdue ? "is-overdue" : ""}`}>
-          <CalendarClock size={13} />
-          {formatDateTime(content.dataPublicacao)}
-          {isOverdue && " · atrasado"}
-        </span>
-      )}
+        {(meta.length > 0 || publishDate) && (
+          <p className="slate-meta">
+            {meta.length > 0 && <span>{meta.join(" · ")}</span>}
+            {publishDate && (
+              <time
+                className={`slate-date timecode ${isOverdue ? "is-overdue" : ""}`}
+                dateTime={content.dataPublicacao as string}
+              >
+                {slateDay(publishDate)} {slateTime(publishDate)}
+                {isOverdue && " · ATRASADO"}
+              </time>
+            )}
+          </p>
+        )}
+
+        <ProductionStrip stage={content.etapa} showCounter />
+      </div>
 
       <footer className="kanban-card-footer">
         <span className="kanban-card-author" title={content.autor?.nome ?? undefined}>

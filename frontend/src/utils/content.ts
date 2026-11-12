@@ -101,3 +101,8 @@ export function estimateSpeakingTime(words: number): string {
   return rest ? `${minutes}min ${rest}s` : `${minutes}min`;
 }
 
+
+/** Número de cena da claquete: 42 → "042" */
+export function sceneNumber(id: number): string {
+  return String(id).padStart(3, "0");
+}

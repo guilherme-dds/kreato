@@ -5,13 +5,13 @@ import { useAuth } from "../context/AuthContext";
 import { useLayoutContext } from "../layouts/layoutContext";
 import { AttachmentsPanel } from "../components/pipeline/AttachmentsPanel";
 import { MetricsPanel } from "../components/pipeline/MetricsPanel";
+import { ProductionStepper } from "../components/pipeline/ProductionStrip";
 import { ReviewPanel } from "../components/pipeline/ReviewPanel";
 import { deleteContentApi, getContentApi, isPlanLimitError, planLimitResource, moveContentApi, updateContentApi } from "../api/backend";
 import type { ContentDetail, ContentFormat, ContentInput, ContentStage, Platform } from "../types";
 import {
   CONTENT_FORMATS,
   CONTENT_FORMAT_LABELS,
-  CONTENT_STAGES,
   CONTENT_STAGE_LABELS,
   PLATFORMS,
   formatDateTime,
@@ -21,6 +21,7 @@ import {
   formatRelativeDate,
   fromDateTimeLocal,
   parseHashtagsInput,
+  sceneNumber,
   toDateTimeLocal,
 } from "../utils/content";
 
@@ -288,14 +289,18 @@ export const ContentEditorPage: React.FC = () => {
     );
   }
 
-  const stageIndex = CONTENT_STAGES.indexOf(content.etapa);
-
   return (
     <div className="page page-wide editor-page">
       <div className="editor-topbar">
-        <button className="editor-back" onClick={goBack}>
-          <ArrowLeft size={16} /> Pipeline
-        </button>
+        <div className="editor-topbar-start">
+          <button className="editor-back" onClick={goBack}>
+            <ArrowLeft size={16} /> Pipeline
+          </button>
+          <span className="editor-scene timecode">
+            {content.etapa === "GRAVACAO" && <span className="rec-dot" aria-hidden="true" />}
+            CENA {sceneNumber(content.id)}
+          </span>
+        </div>
         <div className="editor-save-state">
           {isSaving ? (
             <span>Salvando...</span>
@@ -314,20 +319,12 @@ export const ContentEditorPage: React.FC = () => {
         </div>
       </div>
 
-      <nav className="stage-stepper" aria-label="Etapa do conteúdo">
-        {CONTENT_STAGES.map((stage, index) => (
-          <button
-            key={stage}
-            className={`stage-step ${index < stageIndex ? "is-done" : ""} ${index === stageIndex ? "is-current" : ""}`}
-            onClick={() => changeStage(stage)}
-            disabled={isMoving || (index !== stageIndex && !content.permissoes.moverPara.includes(stage))}
-            aria-current={index === stageIndex ? "step" : undefined}
-          >
-            <span className="stage-step-dot">{index < stageIndex ? <Check size={12} /> : index + 1}</span>
-            {CONTENT_STAGE_LABELS[stage]}
-          </button>
-        ))}
-      </nav>
+      <ProductionStepper
+        stage={content.etapa}
+        allowedStages={content.permissoes.moverPara}
+        disabled={isMoving}
+        onSelect={changeStage}
+      />
 
       {(content.roteiroAprovadoEm || !canEditText) && (
         <div className="editor-notices">

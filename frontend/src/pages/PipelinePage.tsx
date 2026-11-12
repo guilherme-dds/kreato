@@ -305,7 +305,7 @@ export const PipelinePage: React.FC = () => {
         </div>
       ) : (
         <div className="kanban-board">
-          {CONTENT_STAGES.map((stage) => {
+          {CONTENT_STAGES.map((stage, stageIndex) => {
             const column = columns.get(stage) ?? [];
             const visible = visibleCards(stage);
             const hiddenPublished = hasFilters ? 0 : column.length - visible.length;
@@ -316,7 +316,9 @@ export const PipelinePage: React.FC = () => {
             return (
               <section key={stage} className={`kanban-column stage-${stage.toLowerCase()} ${isTarget ? "is-drop-target" : ""} ${isLocked ? "is-drop-locked" : ""}`}>
                 <header className="kanban-column-header">
-                  <span className="kanban-column-dot" />
+                  <span className="kanban-column-number timecode" aria-hidden="true">
+                    {String(stageIndex + 1).padStart(2, "0")}
+                  </span>
                   <h2>{CONTENT_STAGE_LABELS[stage]}</h2>
                   <span className="kanban-column-count">{hasFilters ? `${visible.length}/${column.length}` : column.length}</span>
                   {creatableStages.includes(stage) && (
