@@ -7,6 +7,9 @@ import { authSwaggerDocument } from "./swagger.js";
 
 const app = express();
 
+// Atrás do nginx: req.ip passa a ser o IP real do cliente (usado no limite de tentativas)
+app.set("trust proxy", 1);
+
 app.use(express.json());
 app.use(cors());
 

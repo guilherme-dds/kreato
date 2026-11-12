@@ -4,8 +4,7 @@
     "target": "esnext",
     "types": [],
     "sourceMap": true,
-    "declaration": true,
-    "declarationMap": true,
+    "declaration": false,
     "noUncheckedIndexedAccess": true,
     "exactOptionalPropertyTypes": true,
     "strict": true,
@@ -13,6 +12,11 @@
     "isolatedModules": true,
     "noUncheckedSideEffectImports": true,
     "moduleDetection": "force",
-    "skipLibCheck": true
-  }
+    "skipLibCheck": true,
+    "rootDir": "./src",
+    "outDir": "./dist"
+  },
+  "include": [
+    "src"
+  ]
 }

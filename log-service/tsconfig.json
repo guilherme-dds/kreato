@@ -5,6 +5,13 @@
     "target": "esnext",
     "esModuleInterop": true,
     "strict": true,
-    "skipLibCheck": true
-  }
+    "skipLibCheck": true,
+    "rootDir": "./src",
+    "outDir": "./dist",
+    "declaration": false,
+    "types": []
+  },
+  "include": [
+    "src"
+  ]
 }

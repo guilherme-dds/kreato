@@ -6,7 +6,8 @@
   "type": "module",
   "scripts": {
     "dev": "npx tsx src/server.ts",
-    "build": "tsc"
+    "build": "tsc -p tsconfig.json",
+    "start": "node dist/server.js"
   },
   "keywords": [],
   "author": "",

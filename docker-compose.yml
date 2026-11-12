@@ -127,11 +127,12 @@ services:
     build:
       context: ./frontend
       dockerfile: Dockerfile
+      args:
+        # Embutida no bundle no build; vazio = usa /api (mesmo domínio, via nginx)
+        VITE_API_BASE_URL: ${VITE_API_BASE_URL:-}
     container_name: kreato-frontend
     expose:
       - "5173"
-    environment:
-      VITE_API_BASE_URL: ${VITE_API_BASE_URL}
     depends_on:
       - backend
     restart: unless-stopped

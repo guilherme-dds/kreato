@@ -5,7 +5,8 @@
   "main": "index.js",
   "scripts": {
     "dev": "npx tsx src/server.ts",
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "build": "tsc -p tsconfig.json",
+    "start": "node dist/server.js"
   },
   "keywords": [],
   "author": "",
@@ -19,8 +20,6 @@
     "@types/multer": "^2.3.0",
     "@types/node": "^26.2.0",
     "@types/swagger-ui-express": "^4.1.8",
-    "dotenv": "^17.4.2",
-    "prisma": "^7.9.1",
     "tsx": "^4.23.12",
     "typescript": "^7.0.2"
   },
@@ -28,12 +27,14 @@
     "@prisma/adapter-mariadb": "^7.9.1",
     "@prisma/client": "^7.9.1",
     "cors": "^2.8.6",
+    "dotenv": "^17.4.2",
     "express": "^5.2.1",
     "ioredis": "^5.4.1",
     "jsonwebtoken": "^9.0.3",
     "mariadb": "^3.5.3",
     "minio": "^8.0.7",
     "multer": "^2.4.0",
+    "prisma": "^7.9.1",
     "stripe": "^23.0.0",
     "swagger-ui-express": "^5.0.1"
   }
