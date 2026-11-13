@@ -25,6 +25,7 @@ const ContentEditorPage = lazy(() =>
 );
 const AnalyticsPage = lazy(() => import("./pages/AnalyticsPage").then((module) => ({ default: module.AnalyticsPage })));
 const AdminPage = lazy(() => import("./pages/AdminPage").then((module) => ({ default: module.AdminPage })));
+const LandingPage = lazy(() => import("./pages/LandingPage").then((module) => ({ default: module.LandingPage })));
 
 const PageLoader: React.FC = () => (
   <div className="catalog-loading">
@@ -48,7 +49,11 @@ const RequireAuth: React.FC<{ children: React.ReactElement }> = ({ children }) =
   const location = useLocation();
 
   if (isLoading) return <FullScreenLoader />;
-  if (!isAuthenticated) return <Navigate to="/login" replace state={{ from: location }} />;
+  if (!isAuthenticated) {
+    // Visitante na raiz vê a apresentação do produto; os demais endereços seguem para o login
+    if (location.pathname === "/" && !location.search) return withSuspense(<LandingPage />);
+    return <Navigate to="/login" replace state={{ from: location }} />;
+  }
   return children;
 };
 
