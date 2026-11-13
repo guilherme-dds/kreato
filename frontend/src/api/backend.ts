@@ -156,6 +156,11 @@ async function parseResponse<T>(response: Response, defaultErrorMessage: string)
 
 let accessToken: string | null = null;
 let refreshInFlight: Promise<RefreshTokenResponse> | null = null;
+/**
+ * Depois de sair, nenhuma renovação pode reabrir a sessão: uma requisição atrasada (ou da landing)
+ * que tentasse renovar com o cookie antigo traria o usuário de volta. Só um novo login libera.
+ */
+let sessionEnded = false;
 
 /** Disparado com o novo access token sempre que a sessão é renovada */
 export const AUTH_TOKEN_EVENT = "auth:token";
@@ -189,12 +194,14 @@ export async function loginApi(email: string, password: string): Promise<AuthRes
   });
 
   const data = await parseResponse<AuthResponse>(response, "Falha na autenticação");
+  sessionEnded = false;
   setAccessToken(data.token);
   clearLegacyTokens();
   return data;
 }
 
 async function requestRefresh(): Promise<RefreshTokenResponse> {
+  if (sessionEnded) throw new Error("Sessão encerrada.");
   let legacy: string | null = null;
   try {
     legacy = localStorage.getItem(LEGACY_REFRESH_KEY);
@@ -211,6 +218,8 @@ async function requestRefresh(): Promise<RefreshTokenResponse> {
   });
 
   const data = await parseResponse<RefreshTokenResponse>(response, "Falha ao renovar sessão");
+  // O usuário saiu enquanto a renovação estava no caminho: descarta o token novo
+  if (sessionEnded) throw new Error("Sessão encerrada.");
   setAccessToken(data.token);
   clearLegacyTokens();
   window.dispatchEvent(new CustomEvent(AUTH_TOKEN_EVENT, { detail: data }));
@@ -231,8 +240,12 @@ export function refreshTokenApi(): Promise<RefreshTokenResponse> {
 }
 
 export async function logoutApi(token?: string | null, userId?: string | null): Promise<void> {
+  sessionEnded = true;
   setAccessToken(null);
   clearLegacyTokens();
+  // Uma renovação em andamento troca o refresh token: espera por ela para que o logout
+  // revogue o token novo, e não o antigo
+  if (refreshInFlight) await refreshInFlight.catch(() => {});
   try {
     const headers: Record<string, string> = { "Content-Type": "application/json" };
     if (token) {
@@ -439,6 +452,12 @@ export async function removeUserAvatarApi(token?: string | null): Promise<User> 
 
 export async function getUsageApi(token?: string | null): Promise<UsageResponse> {
   return fetchWithAuth<UsageResponse>("/user/usage", {}, token, "Erro ao carregar o uso do plano");
+}
+
+/** Catálogo de planos para visitantes: sem token e sem tentar renovar sessão */
+export async function getPublicPlansApi(): Promise<BillingPlansResponse> {
+  const response = await fetch(`${API_BASE_URL}/stripe/plans`);
+  return parseResponse<BillingPlansResponse>(response, "Erro ao carregar os planos");
 }
 
 export async function getBillingPlansApi(token?: string | null): Promise<BillingPlansResponse> {

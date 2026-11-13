@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { KreatoLogo } from "../components/KreatoLogo";
-import { getBillingPlansApi } from "../api/backend";
+import { getPublicPlansApi } from "../api/backend";
 import type { Plan, PlanLimits } from "../types";
 import "./landing.css";
 
@@ -165,7 +165,7 @@ export const LandingPage: React.FC = () => {
   // Preços reais do Stripe (catálogo público); sem resposta, ficam os valores de tabela
   useEffect(() => {
     let cancelled = false;
-    getBillingPlansApi(null)
+    getPublicPlansApi()
       .then((data) => {
         if (cancelled) return;
         setPlans((current) =>
