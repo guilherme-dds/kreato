@@ -255,10 +255,12 @@ export class StripeController {
       const item = subscription.items.data[0];
       if (!item) return res.status(409).json({ error: "Assinatura sem itens no Stripe." });
 
+      // A data do pedido garante uma mudança na assinatura: mesmo se o preço já for o de destino
+      // (ex.: um webhook perdido antes), o Stripe envia o customer.subscription.updated e o plano sincroniza
       await stripe.subscriptions.update(subscription.id, {
         items: [{ id: item.id, price: priceId }],
         proration_behavior: "create_prorations",
-        metadata: { ...subscription.metadata, plano: plan },
+        metadata: { ...subscription.metadata, plano: plan, trocaSolicitadaEm: new Date().toISOString() },
       });
 
       // O plano no banco muda quando o customer.subscription.updated chegar
